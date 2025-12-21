@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { 
   FaBox, FaHandHoldingHeart, FaCheckCircle, 
-  FaClock, FaUserCircle, FaStar 
+  FaUserCircle, FaEdit, FaTimes, FaMapMarkerAlt, FaUserEdit, FaCalendarAlt 
 } from 'react-icons/fa';
 
 const Profile = () => {
@@ -13,8 +13,16 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState(null);
 
+  // --- STATES FOR EDIT PROFILE ---
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [userData, setUserData] = useState({ 
+    name: '', 
+    address: '', 
+    phone: '', 
+    createdAt: '' 
+  });
+
   useEffect(() => {
-    // 1. Get the email from localStorage (instead of Firebase)
     const savedEmail = localStorage.getItem('userEmail');
     if (savedEmail) {
       setUserEmail(savedEmail);
@@ -27,20 +35,41 @@ const Profile = () => {
   const fetchProfileData = async (email) => {
     setLoading(true);
     try {
-      // 2. Fetch using email instead of uid
-      const [itemsRes, incomingRes, outgoingRes] = await Promise.all([
+      const [itemsRes, incomingRes, outgoingRes, userRes] = await Promise.all([
         axios.get(`http://localhost:8000/api/items/user/${email}`),
         axios.get(`http://localhost:8000/api/requests/owner/${email}`),
-        axios.get(`http://localhost:8000/api/requests/borrower/${email}`)
+        axios.get(`http://localhost:8000/api/requests/borrower/${email}`),
+        axios.get(`http://localhost:8000/api/users/profile-by-email/${email}`)
       ]);
 
       setMyItems(itemsRes.data);
       setIncomingRequests(incomingRes.data);
       setMyBorrowRequests(outgoingRes.data);
+
+      if (userRes.data) {
+        setUserData({
+          name: userRes.data.name || '',
+          address: userRes.data.address || '',
+          phone: userRes.data.phone || '',
+          createdAt: userRes.data.createdAt || '' // Capturing the join date
+        });
+      }
     } catch (err) {
       console.error("Fetch Error:", err);
     }
     setLoading(false);
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.patch(`http://localhost:8000/api/users/update/${userEmail}`, userData);
+      alert("Profile updated successfully!");
+      setIsEditModalOpen(false);
+      fetchProfileData(userEmail); 
+    } catch (err) {
+      alert("Error updating profile");
+    }
   };
 
   const handleApprove = async (requestId) => {
@@ -54,8 +83,8 @@ const Profile = () => {
   const handleComplete = async (requestId, borrowerEmail, rating) => {
     try {
       await axios.patch(`http://localhost:8000/api/requests/complete/${requestId}`, {
-        rating, 
-        borrowerEmail // Using email now
+        rating,
+        borrowerEmail
       });
       alert("Item Returned & Karma Updated!");
       fetchProfileData(userEmail);
@@ -77,22 +106,92 @@ const Profile = () => {
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4">
-      {/* Header */}
-      <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 mb-8 flex flex-col md:flex-row justify-between items-center">
+
+      {/* Header Section */}
+      <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex items-center gap-4">
           <div className="bg-indigo-100 p-4 rounded-full">
             <FaUserCircle className="text-4xl text-indigo-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-800">My Dashboard</h1>
+            <h1 className="text-2xl font-black text-slate-800">{userData.name || "DharLink User"}</h1>
             <p className="text-slate-500 text-sm font-mono">{userEmail}</p>
+            
+            <div className="flex flex-wrap gap-3 mt-2">
+              <p className="text-xs text-indigo-500 font-bold flex items-center gap-1">
+                <FaMapMarkerAlt className="text-[10px]" /> {userData.address || "Location not set"}
+              </p>
+              <p className="text-xs text-slate-400 font-bold flex items-center gap-1">
+                <FaCalendarAlt className="text-[10px]" /> 
+                Member since {userData.createdAt 
+                  ? new Date(userData.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) 
+                  : "Joining date hidden"}
+              </p>
+            </div>
           </div>
         </div>
-        <div className="bg-indigo-50 px-6 py-2 rounded-2xl border border-indigo-100">
-          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Listed Items</p>
-          <p className="text-xl font-black text-indigo-600 text-center">{myItems.length}</p>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-2xl font-bold text-sm transition"
+          >
+            <FaEdit /> Edit Profile
+          </button>
+          <div className="bg-indigo-50 px-6 py-2 rounded-2xl border border-indigo-100 text-center">
+            <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Listed</p>
+            <p className="text-xl font-black text-indigo-600">{myItems.length}</p>
+          </div>
         </div>
       </div>
+
+      {/* --- EDIT PROFILE MODAL --- */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 animate-fadeIn">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-black text-slate-800 flex items-center gap-2"><FaUserEdit className="text-indigo-600" /> Edit Profile</h2>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600"><FaTimes /></button>
+            </div>
+
+            <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 block ml-1">Full Name</label>
+                <input
+                  type="text"
+                  className="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 ring-indigo-500"
+                  value={userData.name}
+                  onChange={(e) => setUserData({ ...userData, name: e.target.value })}
+                  placeholder="Enter your name"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 block ml-1">Phone Number</label>
+                <input
+                  type="text"
+                  className="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 ring-indigo-500"
+                  value={userData.phone}
+                  onChange={(e) => setUserData({ ...userData, phone: e.target.value })}
+                  placeholder="017XXXXXXXX"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 block ml-1">Home Address</label>
+                <input
+                  type="text"
+                  className="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 ring-indigo-500"
+                  value={userData.address}
+                  onChange={(e) => setUserData({ ...userData, address: e.target.value })}
+                  placeholder="e.g. Dhanmondi, Dhaka"
+                />
+              </div>
+              <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition">
+                Save Changes
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-2 mb-8 bg-slate-200/50 p-1.5 rounded-2xl w-fit">
@@ -105,7 +204,7 @@ const Profile = () => {
         {activeTab === 'lending' ? (
           <div className="space-y-4">
             <h2 className="font-bold text-slate-700 flex items-center gap-2 px-2"><FaHandHoldingHeart className="text-rose-500" /> Incoming Requests</h2>
-            {incomingRequests.length === 0 ? <p className="text-slate-400 italic bg-white p-10 rounded-3xl text-center border-2 border-dashed">No neighbors have requested your items yet.</p> : 
+            {incomingRequests.length === 0 ? <p className="text-slate-400 italic bg-white p-10 rounded-3xl text-center border-2 border-dashed">No neighbors have requested your items yet.</p> :
               incomingRequests.map(req => (
                 <div key={req._id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
                   <div>
@@ -138,7 +237,7 @@ const Profile = () => {
         ) : (
           <div className="space-y-4">
             <h2 className="font-bold text-slate-700 flex items-center gap-2 px-2"><FaBox className="text-indigo-600" /> My Borrowing</h2>
-            {myBorrowRequests.length === 0 ? <p className="text-slate-400 italic bg-white p-10 rounded-3xl text-center border-2 border-dashed">You haven't requested to borrow anything yet.</p> : 
+            {myBorrowRequests.length === 0 ? <p className="text-slate-400 italic bg-white p-10 rounded-3xl text-center border-2 border-dashed">You haven't requested to borrow anything yet.</p> :
               myBorrowRequests.map(req => (
                 <div key={req._id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex justify-between items-center">
                   <div>

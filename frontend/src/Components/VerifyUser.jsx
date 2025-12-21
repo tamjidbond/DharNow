@@ -53,7 +53,7 @@ const VerifyUser = () => {
       const base64Nid = await convertToBase64(idFile);
 
       await axios.post('http://localhost:8000/api/users/register', {
-        uid: user.uid,
+        email: user.email,
         phone: user.phoneNumber,
         name: profile.name,
         address: profile.address,

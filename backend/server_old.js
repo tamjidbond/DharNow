@@ -46,9 +46,8 @@ async function startServer() {
     console.error("❌ Failed to connect to MongoDB", err);
   }
 }
-// Change from 10mb to 50mb
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 
 // --- AUTH ROUTES (EMAIL OTP) ---
@@ -66,7 +65,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
     );
 
     await transporter.sendMail({
-      from: '"DharNow" <noreply@dharlink.com>',
+      from: '"DharLink" <noreply@dharlink.com>',
       to: email,
       subject: "Your Verification Code",
       html: `<div style="font-family:sans-serif; padding:20px;">
@@ -164,21 +163,6 @@ app.get('/api/users/profile/:uid', async (req, res) => {
 });
 
 
-app.get('/api/users/profile-by-email/:email', async (req, res) => {
-  const user = await db.collection("users").findOne({ email: req.params.email });
-  res.json(user);
-});
-
-app.patch('/api/users/update/:email', async (req, res) => {
-  const { name, address, phone } = req.body;
-  await db.collection("users").updateOne(
-    { email: req.params.email },
-    { $set: { name, address, phone } }
-  );
-  res.json({ message: "Updated" });
-});
-
-
 
 // --- GET SINGLE ITEM WITH OWNER DETAILS ---
 app.get('/api/items/:id', async (req, res) => {
@@ -215,35 +199,41 @@ app.post('/api/requests/create', async (req, res) => {
 
 app.post('/api/items/add', async (req, res) => {
   try {
-    // FIX: Added 'price' and 'priceType' to this list below
-    const { title, description, category, price, priceType, phone, address, image, coordinates, lentBy } = req.body;
+    const { title, description, category, image, coordinates, userId } = req.body;
+
+    // Create a GeoJSON point for the coordinates
+    const location = {
+      type: "Point",
+      coordinates: coordinates // [longitude, latitude]
+    };
 
     const newItem = {
       title,
       description,
       category,
-      price: Number(price), // Ensure it is a number
-      priceType,
-      phone,
-      address,
-      image,
-      lentBy,
+      image, // Base64 image
+      location: location, // MongoDB GeoJSON format
+      lentBy: userId, // The user who listed the item
       status: 'available',
-      location: {
-        type: 'Point',
-        coordinates: coordinates
-      },
-      createdAt: new Date()
+      postedAt: new Date()
     };
 
-    await db.collection("items").insertOne(newItem);
-    res.status(201).json({ message: "Item added successfully" });
+    const result = await db.collection("items").insertOne(newItem);
+    res.status(201).json(result);
   } catch (err) {
-    console.error("Backend Error:", err); // This helps you see the error in your terminal
-    res.status(500).json({ error: err.message });
+    res.status(500).send("Error adding item: " + err.message);
   }
 });
 
+// GET all users who are NOT verified yet
+app.get('/api/admin/pending-users', async (req, res) => {
+  try {
+    const users = await db.collection("users").find({ isVerified: false }).toArray();
+    res.json(users);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
 
 // --- APPROVE A BORROW REQUEST ---
 app.patch('/api/requests/approve/:requestId', async (req, res) => {
@@ -315,21 +305,21 @@ app.patch('/api/admin/verify-user/:uid', async (req, res) => {
 
 app.post('/api/users/register', async (req, res) => {
   try {
-    // Removed nidPhoto from the destructuring
-    const { email, name, address } = req.body;
+    const { uid, phone, name, address, nidPhoto } = req.body;
 
     const userProfile = {
-      email: email,
+      firebaseUid: uid,
+      phone: phone,
       name: name,
       address: address,
-      isVerified: true, // Automatically verify since we aren't checking docs anymore
+      nidPhoto: nidPhoto, // This will now be the Base64 string of the image
+      isVerified: false,
       karma: 10,
-      totalDeals: 0,
       createdAt: new Date()
     };
 
     await db.collection("users").insertOne(userProfile);
-    res.status(201).json({ message: "Success! Profile created." });
+    res.status(201).json({ message: "Success! NID saved to MongoDB." });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
