@@ -11,7 +11,7 @@ const MyBorrowing = ({ requests }) => (
             <span className="font-bold text-slate-800 text-sm block truncate">{req.itemTitle}</span>
             <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest truncate">Lender: {req.lenderName || req.lenderEmail}</p>
             {req.lenderPhone && (
-              <a href={`https://wa.me/${req.lenderPhone.replace(/\D/g, '')}?text=Hi, I am interested in ${req.itemTitle}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-[10px] font-bold border border-emerald-100">💬 Chat with Owner</a>
+              <a href={`https://wa.me/+88${req.lenderPhone.replace(/\D/g, '')}?text=Hi, I am interested in ${req.itemTitle}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-[10px] font-bold border border-emerald-100">💬 Chat with Owner</a>
             )}
           </div>
           <span className={`whitespace-nowrap font-black text-[9px] px-4 py-1.5 rounded-full uppercase tracking-widest ${req.status === 'approved' ? 'bg-rose-100 text-rose-600' : req.status === 'completed' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>

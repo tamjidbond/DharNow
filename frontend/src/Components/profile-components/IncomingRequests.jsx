@@ -12,7 +12,7 @@ const IncomingRequests = ({ requests, handleApprove, handleReject, handleComplet
             <p className="text-slate-900 text-sm font-black flex items-center gap-2"><FaUserCircle className="text-slate-400" /> {req.borrowerName || "Neighbor"}</p>
             <p className="text-indigo-600 text-xs font-bold mt-1">{req.borrowerEmail}</p>
             {req.borrowerPhone && (
-              <a href={`https://wa.me/${req.borrowerPhone.replace(/\D/g, '')}?text=Hi, I am the owner of ${req.itemTitle} on DharLink!`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-3 bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-emerald-600 transition">💬 Chat on WhatsApp</a>
+              <a href={`https://wa.me/+88${req.borrowerPhone.replace(/\D/g, '')}?text=Hi, I am the owner of ${req.itemTitle} on DharLink!`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-3 bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-emerald-600 transition">💬 Chat on WhatsApp</a>
             )}
             <p className="text-slate-500 italic text-sm mt-2 border-l-2 border-slate-100 pl-3">"{req.message}"</p>
           </div>
