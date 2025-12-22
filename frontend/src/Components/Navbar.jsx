@@ -46,10 +46,9 @@ const Navbar = () => {
     navigate('/register');
   };
 
-  const getLinkStyle = ({ isActive }) => 
-    `flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded-xl font-bold text-sm transition-all duration-200 ${
-      isActive 
-      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+  const getLinkStyle = ({ isActive }) =>
+    `flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded-xl font-bold text-sm transition-all duration-200 ${isActive
+      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
       : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
     }`;
 
@@ -57,7 +56,7 @@ const Navbar = () => {
     <>
       <nav className="w-full bg-white border-b border-slate-200 sticky top-0 z-[1000] px-4 md:px-6 py-3">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          
+
           <Link to="/" className="flex items-center gap-2 group">
             <FaHandsHelping className="text-indigo-600 text-2xl group-hover:scale-110 transition-transform" />
             <span className="text-xl md:text-2xl font-black tracking-tighter text-slate-800">
@@ -68,10 +67,9 @@ const Navbar = () => {
           <div className="flex items-center gap-2 md:gap-3">
             <div className="hidden md:flex items-center gap-2">
               <NavLink to="/" className={getLinkStyle}><FaSearch className="text-lg" /><span>Browse</span></NavLink>
-              
-              {/* Added Request Board Link for Desktop */}
-              <NavLink to="/requests" className={getLinkStyle}><FaBullhorn className="text-lg text-amber-500" /><span>Board</span></NavLink>
-              
+
+
+
               {userEmail && (
                 <>
                   <NavLink to="/inbox" className={getLinkStyle}>
@@ -92,8 +90,8 @@ const Navbar = () => {
             {userEmail ? (
               <div className="flex items-center">
                 <div className="hidden md:block h-6 w-px bg-slate-200 mx-2"></div>
-                <button 
-                  onClick={logout} 
+                <button
+                  onClick={logout}
                   className="flex items-center gap-2 text-slate-400 hover:text-rose-500 font-bold text-sm px-3 py-2 transition-colors"
                 >
                   <FaSignOutAlt className="text-lg" />
@@ -114,9 +112,8 @@ const Navbar = () => {
       {userEmail && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 z-[1000] flex justify-around items-center">
           <NavLink to="/" className={getLinkStyle}><FaSearch className="text-xl" /></NavLink>
-          
-          {/* Added Request Board Link for Mobile */}
-          <NavLink to="/requests" className={getLinkStyle}><FaBullhorn className="text-xl text-amber-500" /></NavLink>
+
+
 
           <NavLink to="/inbox" className={getLinkStyle}>
             <div className="relative">

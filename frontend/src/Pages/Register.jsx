@@ -32,7 +32,7 @@ const Register = () => {
                     await axios.post('http://localhost:8000/api/users/register', {
                         email: email,
                         name: "DharLink User", // Default placeholder
-                        address: "Address not set" // Default placeholder
+                        address: "Address not set",// Default placeholder
                     });
                 }
                 

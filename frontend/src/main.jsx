@@ -11,7 +11,6 @@ import ItemDetail from './Pages/ItemDetail.jsx';
 import Admin from './Pages/Admin.jsx';
 import Profile from './Pages/Profile.jsx';
 import Inbox from './Pages/Inbox.jsx';
-import RequestBoard from './Pages/RequestBoard.jsx';
 
 const router = createBrowserRouter([
   {
@@ -24,7 +23,7 @@ const router = createBrowserRouter([
       { path: '/register', element: <Register /> } ,
       {path: '/profile', element: <Profile></Profile>},
       {path: '/inbox', element: <Inbox></Inbox>},
-      {path: '/requests', element: <RequestBoard></RequestBoard>}
+      
     ]
   },
   {

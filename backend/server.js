@@ -1,17 +1,16 @@
 const express = require('express');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { ObjectId } = require('mongodb');
 const nodemailer = require('nodemailer');
 
 dotenv.config();
 const app = express();
 
-// Middleware
+// --- CONFIGURATION & MIDDLEWARE ---
 app.use(cors());
-app.use(express.json());
-
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const uri = process.env.MONGO_URI;
 const client = new MongoClient(uri, {
@@ -27,138 +26,43 @@ let db;
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER, // Your gmail
-    pass: process.env.EMAIL_PASS  // Your 16-character App Password
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
 
-// This function connects to the DB and keeps the connection open
+// !-================================================================--- DATABASE CONNECTION --==========================================================================
 async function startServer() {
   try {
     await client.connect();
     db = client.db("DharLink");
     console.log("✅ Successfully connected to MongoDB!");
 
-    // Start the server only AFTER the DB is connected
     const PORT = 8000;
     app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
   } catch (err) {
     console.error("❌ Failed to connect to MongoDB", err);
   }
 }
-// Change from 10mb to 50mb
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-
-// --- AUTH ROUTES (EMAIL OTP) ---
-// --- DHARLINK CHAT ENGINE ---
-
-// 1. SEARCH: Find neighbors by name or email
-app.get('/api/users/search', async (req, res) => {
-  const { query } = req.query;
-  try {
-    const neighbors = await db.collection("users")
-      .find({
-        $or: [
-          { email: { $regex: query, $options: 'i' } },
-          { name: { $regex: query, $options: 'i' } }
-        ]
-      })
-      .limit(5)
-      .toArray();
-    res.json(neighbors);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+// --- BASE ROUTE ---
+app.get('/', (req, res) => {
+  res.send("DharLink Server is Live and Open!");
 });
 
-// 2. SEND: Save a new message
-app.post('/api/messages/send', async (req, res) => {
-  const { senderEmail, receiverEmail, itemId, itemTitle, text } = req.body;
-  try {
-    const newMessage = {
-      senderEmail,
-      receiverEmail,
-      itemId: itemId ? new ObjectId(itemId) : null,
-      itemTitle: itemTitle || "Neighbor Chat",
-      text,
-      isRead: false,
-      createdAt: new Date()
-    };
-    await db.collection("messages").insertOne(newMessage);
-    res.status(201).json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
-// 3. INBOX: Get all messages involving the user (to build the sidebar list)
-app.get('/api/messages/:email', async (req, res) => {
-  try {
-    const userEmail = req.params.email;
-    const messages = await db.collection("messages")
-      .find({
-        $or: [
-          { receiverEmail: userEmail },
-          { senderEmail: userEmail }
-        ]
-      })
-      .sort({ createdAt: -1 })
-      .toArray();
-    res.json(messages);
-  } catch (err) {
-    res.status(500).json({ error: "Database error" });
-  }
-});
-
-// 4. THREAD: Get full history between two people
-app.get('/api/messages/thread/:user1/:user2', async (req, res) => {
-  try {
-    const { user1, user2 } = req.params;
-    const thread = await db.collection("messages")
-      .find({
-        $or: [
-          { senderEmail: user1, receiverEmail: user2 },
-          { senderEmail: user2, receiverEmail: user1 }
-        ]
-      })
-      .sort({ createdAt: 1 }) // Order by time for the chat bubbles
-      .toArray();
-    res.json(thread);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 5. READ STATUS: Mark all messages from a neighbor as read (Clears Navbar Badge)
-app.patch('/api/messages/read-thread/:me/:neighbor', async (req, res) => {
-  try {
-    const { me, neighbor } = req.params;
-    await db.collection("messages").updateMany(
-      { receiverEmail: me, senderEmail: neighbor, isRead: false },
-      { $set: { isRead: true } }
-    );
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
+// !-================================================================1. AUTHENTICATION ROUTES (OTP) ---==========================================================================
 
 
 app.post('/api/auth/send-otp', async (req, res) => {
   const { email } = req.body;
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
   try {
-    // Store OTP in DB (expires in 5 mins)
     await db.collection("otps").updateOne(
       { email },
       { $set: { otp, createdAt: new Date() } },
       { upsert: true }
     );
-
     await transporter.sendMail({
       from: '"DharNow" <noreply@dharlink.com>',
       to: email,
@@ -168,7 +72,6 @@ app.post('/api/auth/send-otp', async (req, res) => {
               <p>Your 6-digit code is: <b style="font-size:24px; color:#4f46e5;">${otp}</b></p>
              </div>`
     });
-
     res.json({ message: "OTP Sent" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -180,124 +83,57 @@ app.post('/api/auth/verify-otp', async (req, res) => {
   try {
     const record = await db.collection("otps").findOne({ email, otp });
     if (!record) return res.status(400).json({ success: false, message: "Invalid OTP" });
-
-    // Check if user exists
     const user = await db.collection("users").findOne({ email: email });
-
-    // Delete OTP after use
     await db.collection("otps").deleteOne({ email });
-
     res.json({ success: true, newUser: !user });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Routes
-app.get('/', (req, res) => {
-  res.send("DharLink Server is Live and Open!");
-});
 
-app.get('/api/items/all', async (req, res) => {
-  try {
-    const items = await db.collection("items").find({}).toArray();
-    // Convert GeoJSON to [lat, lng] for frontend display if needed
-    const formattedItems = items.map(item => ({
-      ...item,
-      // Leaflet uses [latitude, longitude], MongoDB uses [longitude, latitude]
-      coordinates: item.location ? [item.location.coordinates[1], item.location.coordinates[0]] : [23.8103, 90.4125] // Default if no location
-    }));
-    res.json(formattedItems);
-  } catch (err) {
-    res.status(500).send("Error fetching items: " + err.message);
-  }
-});
+// !-================================================================--- 2.User Profile Root --==========================================================================
 
-app.get('/api/requests/all-open', async (req, res) => {
-  try {
-    // Access your database collection directly
-    const requests = await db.collection('community_requests')
-      .find({ status: 'open' })
-      .sort({ createdAt: -1 }) // Newest first
-      .toArray();
-    res.json(requests);
-  } catch (err) {
-    res.status(500).send("Error fetching board");
-  }
-});
+// server.js (Backend)
 
-app.post('/api/requests/create', async (req, res) => {
+app.post('/api/users/register', async (req, res) => {
   try {
-    const newRequest = {
-      requesterEmail: req.body.requesterEmail,
-      requesterName: req.body.requesterName,
-      title: req.body.title,
-      description: req.body.description,
-      status: 'open',
+    const { email, name, address, isAdmin } = req.body;
+
+    // 1. Check if user already exists
+    const existingUser = await db.collection('users').findOne({ email });
+
+    if (existingUser) {
+      return res.json(existingUser); // Return existing user if they are already there
+    }
+
+    // 2. Create the new user object
+    const newUser = {
+      email,
+      name,
+      address,
+      isAdmin: isAdmin || false, // Default to false for everyone
       createdAt: new Date()
     };
 
-    await db.collection('community_requests').insertOne(newRequest);
-    res.status(201).send("Request posted");
+    // 3. Insert into MongoDB
+    await db.collection('users').insertOne(newUser);
+
+    res.json(newUser);
   } catch (err) {
-    res.status(500).send("Error posting request");
+    res.status(500).json({ error: "Failed to register user" });
   }
 });
-
-// 1. Get all items listed by a specific user
-app.get('/api/items/user/:uid', async (req, res) => {
-  try {
-    const items = await db.collection("items").find({ lentBy: req.params.uid }).toArray();
-    res.json(items);
-  } catch (err) { res.status(500).send(err.message); }
-});
-
-// GET: Requests received by the Owner (Incoming)
-app.get('/api/requests/owner/:email', async (req, res) => {
-  try {
-    const requests = await db.collection("requests")
-      .find({ lenderEmail: req.params.email })
-      .sort({ createdAt: -1 })
-      .toArray();
-    res.json(requests);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET: Requests sent by the Borrower (My Borrowing)
-app.get('/api/requests/borrower/:email', async (req, res) => {
-  try {
-    const requests = await db.collection("requests")
-      .find({ borrowerEmail: req.params.email })
-      .sort({ createdAt: -1 })
-      .toArray();
-    res.json(requests);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-
-
-
-
 
 app.get('/api/users/profile/:uid', async (req, res) => {
   try {
     const user = await db.collection("users").findOne({ firebaseUid: req.params.uid });
-
-    if (user) {
-      return res.status(200).json(user);
-    } else {
-      // Send a clean 404. Do not send a string, send a small JSON object.
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (user) return res.status(200).json(user);
+    return res.status(404).json({ message: "User not found" });
   } catch (err) {
     res.status(500).json({ error: "Database error" });
   }
 });
-
 
 app.get('/api/users/profile-by-email/:email', async (req, res) => {
   const user = await db.collection("users").findOne({ email: req.params.email });
@@ -313,47 +149,106 @@ app.patch('/api/users/update/:email', async (req, res) => {
   res.json({ message: "Updated" });
 });
 
+app.get('/api/users/search', async (req, res) => {
+  const { query } = req.query;
+  try {
+    const neighbors = await db.collection("users")
+      .find({
+        $or: [
+          { email: { $regex: query, $options: 'i' } },
+          { name: { $regex: query, $options: 'i' } }
+        ]
+      })
+      .limit(5).toArray();
+    res.json(neighbors);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
+// !-================================================================--- 3. Item Listing Root ---==========================================================================
 
-// --- GET SINGLE ITEM WITH OWNER DETAILS ---
-// GET: Single item details with owner info
+app.get('/api/items/all', async (req, res) => {
+  try {
+    const items = await db.collection("items").find({}).toArray();
+    const formattedItems = items.map(item => ({
+      ...item,
+      coordinates: item.location ? [item.location.coordinates[1], item.location.coordinates[0]] : [23.8103, 90.4125]
+    }));
+    res.json(formattedItems);
+  } catch (err) {
+    res.status(500).send("Error fetching items: " + err.message);
+  }
+});
+
 app.get('/api/items/:id', async (req, res) => {
   try {
     const item = await db.collection("items").findOne({ _id: new ObjectId(req.params.id) });
-
     if (!item) return res.status(404).json({ message: "Item not found" });
-
-    // MANUALLY FETCH THE OWNER DATA
     const owner = await db.collection("users").findOne(
       { email: item.lentBy },
       { projection: { name: 1, phone: 1, address: 1, createdAt: 1 } }
     );
-
     res.json({ item, owner });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST: Create a borrow request
+app.post('/api/items/add', async (req, res) => {
+  try {
+    const { title, description, category, price, priceType, phone, address, image, coordinates, lentBy } = req.body;
+    const newItem = {
+      title, description, category, price: Number(price), priceType, phone, address, image, lentBy,
+      status: 'available',
+      location: { type: 'Point', coordinates: coordinates },
+      createdAt: new Date()
+    };
+    await db.collection("items").insertOne(newItem);
+    res.status(201).json({ message: "Item added successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/items/user/:uid', async (req, res) => {
+  try {
+    const items = await db.collection("items").find({ lentBy: req.params.uid }).toArray();
+    res.json(items);
+  } catch (err) { res.status(500).send(err.message); }
+});
+
+app.delete('/api/items/delete/:id', async (req, res) => {
+  try {
+    const itemId = req.params.id;
+    const deleteResult = await db.collection("items").deleteOne({ _id: new ObjectId(itemId) });
+    if (deleteResult.deletedCount > 0) {
+      await db.collection("requests").deleteMany({
+        itemId: itemId,
+        status: { $in: ['pending', 'approved'] }
+      });
+      res.json({ message: "Item and associated requests removed." });
+    } else {
+      res.status(404).json({ message: "Item not found" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+///! --- 4. BORROW REQUEST ROUTES ---
+
 app.post('/api/requests/create', async (req, res) => {
   try {
-    // 1. Get borrowerPhone from the body
     const { itemId, lenderEmail, borrowerEmail, borrowerPhone, message } = req.body;
-
     const item = await db.collection("items").findOne({ _id: new ObjectId(itemId) });
-
     const newRequest = {
       itemId: new ObjectId(itemId),
       itemTitle: item ? item.title : "Unknown Item",
-      lenderEmail,
-      borrowerEmail,
-      borrowerPhone, // SAVING IT HERE
-      message,
+      lenderEmail, borrowerEmail, borrowerPhone, message,
       status: 'pending',
       createdAt: new Date()
     };
-
     await db.collection("requests").insertOne(newRequest);
     res.status(201).json({ message: "Request sent!" });
   } catch (err) {
@@ -361,307 +256,224 @@ app.post('/api/requests/create', async (req, res) => {
   }
 });
 
-app.delete('/api/requests/delete/:id', async (req, res) => {
+// GET: Requests received by the Owner (Incoming)
+app.get('/api/requests/owner/:email', async (req, res) => {
   try {
-    const { email } = req.body; // Pass userEmail from frontend for safety
-    const requestId = req.params.id;
-
-    // Only delete if the ID matches AND the email belongs to the requester
-    const result = await db.collection('community_requests').deleteOne({
-      _id: new ObjectId(requestId),
-      requesterEmail: email
-    });
-
-    if (result.deletedCount === 1) {
-      res.status(200).send("Request removed");
-    } else {
-      res.status(403).send("Unauthorized or not found");
-    }
-  } catch (err) {
-    res.status(500).send("Error deleting");
-  }
-});
-
-app.post('/api/items/add', async (req, res) => {
-  try {
-    // FIX: Added 'price' and 'priceType' to this list below
-    const { title, description, category, price, priceType, phone, address, image, coordinates, lentBy } = req.body;
-
-    const newItem = {
-      title,
-      description,
-      category,
-      price: Number(price), // Ensure it is a number
-      priceType,
-      phone,
-      address,
-      image,
-      lentBy,
-      status: 'available',
-      location: {
-        type: 'Point',
-        coordinates: coordinates
+    const requests = await db.collection("requests").aggregate([
+      { $match: { lenderEmail: req.params.email } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "borrowerEmail",
+          foreignField: "email",
+          as: "borrowerDetails"
+        }
       },
-      createdAt: new Date()
-    };
-
-    await db.collection("items").insertOne(newItem);
-    res.status(201).json({ message: "Item added successfully" });
-  } catch (err) {
-    console.error("Backend Error:", err); // This helps you see the error in your terminal
-    res.status(500).json({ error: err.message });
-  }
+      { $unwind: { path: "$borrowerDetails", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          itemId: 1, itemTitle: 1, lenderEmail: 1, borrowerEmail: 1,
+          borrowerPhone: 1, message: 1, status: 1, createdAt: 1,
+          borrowerName: "$borrowerDetails.name"
+        }
+      },
+      { $sort: { createdAt: -1 } }
+    ]).toArray();
+    res.json(requests);
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// GET: Requests sent by the Borrower (My Borrowing) - UPDATED with Lender Name
+app.get('/api/requests/borrower/:email', async (req, res) => {
+  try {
+    const requests = await db.collection("requests").aggregate([
+      { $match: { borrowerEmail: req.params.email } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "lenderEmail",
+          foreignField: "email",
+          as: "lenderDetails"
+        }
+      },
+      { $unwind: { path: "$lenderDetails", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          itemId: 1, itemTitle: 1, lenderEmail: 1, borrowerEmail: 1,
+          borrowerPhone: 1, message: 1, status: 1, createdAt: 1,
+          lenderName: "$lenderDetails.name",// Extract Lender Name
+          lenderPhone: "$lenderDetails.phone" // ADD THIS LINE
+        }
+      },
+      { $sort: { createdAt: -1 } }
+    ]).toArray();
+    res.json(requests);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
-// PATCH: Approve a request AND Mark Item as Booked
 app.patch('/api/requests/approve/:id', async (req, res) => {
   try {
     const requestId = new ObjectId(req.params.id);
-
-    // 1. Find the request
     const request = await db.collection("requests").findOne({ _id: requestId });
     if (!request) return res.status(404).json({ message: "Request not found" });
-
-    console.log("Approving request for Item ID:", request.itemId);
-
-    // 2. Update Request status
-    await db.collection("requests").updateOne(
-      { _id: requestId },
-      { $set: { status: 'approved' } }
-    );
-
-    // 3. Update Item status (CRITICAL: Ensure request.itemId is treated as ObjectId)
-    const itemUpdate = await db.collection("items").updateOne(
-      { _id: new ObjectId(request.itemId) },
-      { $set: { status: 'booked' } }
-    );
-
-    console.log("Item update result:", itemUpdate.modifiedCount);
+    await db.collection("requests").updateOne({ _id: requestId }, { $set: { status: 'approved' } });
+    await db.collection("items").updateOne({ _id: new ObjectId(request.itemId) }, { $set: { status: 'booked' } });
     res.json({ message: "Item status is now Booked" });
-  } catch (err) {
-    console.error("Approve Error:", err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PATCH: Complete a return AND Mark Item as Available
 app.patch('/api/requests/complete/:id', async (req, res) => {
   try {
     const requestId = new ObjectId(req.params.id);
-    const { rating, borrowerEmail } = req.body; // Ensure frontend sends these
-
     const request = await db.collection("requests").findOne({ _id: requestId });
     if (!request) return res.status(404).json({ message: "Request not found" });
 
-    // 1. Update Request status and save rating
     await db.collection("requests").updateOne(
       { _id: requestId },
-      { $set: { status: 'completed', rating: rating || 5, completedAt: new Date() } }
+      { $set: { status: 'completed', rating: req.body.rating || 5, completedAt: new Date() } }
     );
+    await db.collection("items").updateOne({ _id: new ObjectId(request.itemId) }, { $set: { status: 'available' } });
 
-    // 2. Update Item back to available
-    await db.collection("items").updateOne(
-      { _id: new ObjectId(request.itemId) },
-      { $set: { status: 'available' } }
-    );
-
-    // 3. AWARD KARMA (The New Part)
-    // Give Borrower +10 points for returning the item
-    await db.collection("users").updateOne(
-      { email: request.borrowerEmail },
-      { $inc: { karma: 10, totalDeals: 1 } }
-    );
-
-    // Give Lender +15 points for helping a neighbor
-    await db.collection("users").updateOne(
-      { email: request.lenderEmail },
-      { $inc: { karma: 15, totalDeals: 1 } }
-    );
+    await db.collection("users").updateOne({ email: request.borrowerEmail }, { $inc: { karma: 10, totalDeals: 1 } });
+    await db.collection("users").updateOne({ email: request.lenderEmail }, { $inc: { karma: 15, totalDeals: 1 } });
 
     res.json({ message: "Item is Available & Karma Awarded!" });
-  } catch (err) {
-    console.error("Complete Error:", err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-
-// --- NEW REJECT ROUTE ---
 app.patch('/api/requests/reject/:id', async (req, res) => {
   try {
-    const requestId = req.params.id;
-    // Update status to rejected
-    await db.collection("requests").updateOne(
-      { _id: new ObjectId(requestId) },
-      { $set: { status: 'rejected' } }
-    );
+    await db.collection("requests").updateOne({ _id: new ObjectId(req.params.id) }, { $set: { status: 'rejected' } });
     res.json({ message: "Request rejected successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- UPDATED DELETE ITEM ROUTE (With Cleanup) ---
-app.delete('/api/items/delete/:id', async (req, res) => {
+
+// !-================================================================---5.Chat Engine Root  ---==========================================================================
+
+app.post('/api/messages/send', async (req, res) => {
+  const { senderEmail, receiverEmail, itemId, itemTitle, text } = req.body;
   try {
-    const itemId = req.params.id;
-
-    // 1. Delete the item itself
-    const deleteResult = await db.collection("items").deleteOne({
-      _id: new ObjectId(itemId)
-    });
-
-    if (deleteResult.deletedCount > 0) {
-      // 2. IMPORTANT: Remove all pending/approved requests for this item
-      // because the item no longer exists.
-      await db.collection("requests").deleteMany({
-        itemId: itemId, // Assuming you store the itemId as a string or ObjectId in requests
-        status: { $in: ['pending', 'approved'] }
-      });
-
-      res.json({ message: "Item and associated requests removed." });
-    } else {
-      res.status(404).json({ message: "Item not found" });
-    }
-  } catch (err) {
-    console.error("Delete Error:", err);
-    res.status(500).json({ error: err.message });
-  }
+    const newMessage = {
+      senderEmail, receiverEmail,
+      itemId: itemId ? new ObjectId(itemId) : null,
+      itemTitle: itemTitle || "Neighbor Chat",
+      text, isRead: false,
+      createdAt: new Date()
+    };
+    await db.collection("messages").insertOne(newMessage);
+    res.status(201).json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 1. Get all users for admin
+app.get('/api/messages/:email', async (req, res) => {
+  try {
+    const messages = await db.collection("messages")
+      .find({ $or: [{ receiverEmail: req.params.email }, { senderEmail: req.params.email }] })
+      .sort({ createdAt: -1 }).toArray();
+    res.json(messages);
+  } catch (err) { res.status(500).json({ error: "Database error" }); }
+});
+
+app.get('/api/messages/thread/:user1/:user2', async (req, res) => {
+  try {
+    const { user1, user2 } = req.params;
+    const thread = await db.collection("messages")
+      .find({ $or: [{ senderEmail: user1, receiverEmail: user2 }, { senderEmail: user2, receiverEmail: user1 }] })
+      .sort({ createdAt: 1 }).toArray();
+    res.json(thread);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/messages/read-thread/:me/:neighbor', async (req, res) => {
+  try {
+    const { me, neighbor } = req.params;
+    await db.collection("messages").updateMany(
+      { receiverEmail: me, senderEmail: neighbor, isRead: false },
+      { $set: { isRead: true } }
+    );
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// !-================================================================--- 6. Admin Roots ---==========================================================================
+
 app.get('/api/admin/all-users', async (req, res) => {
   const users = await db.collection("users").find({}).toArray();
   res.json(users);
 });
 
-
-
-// --- ADMIN INTELLIGENCE ENDPOINT ---
-app.get('/api/admin/dashboard-intelligence', async (req, res) => {
-  try {
-    // 1. Real Category Data for the Pie Chart
-    const categoryStats = await db.collection("items").aggregate([
-      { $group: { _id: "$category", value: { $sum: 1 } } },
-      { $project: { name: "$_id", value: 1, _id: 0 } }
-    ]).toArray();
-
-    // 2. Real Monthly Growth for the Area Chart
-    const growthStats = await db.collection("items").aggregate([
-      {
-        $group: {
-          _id: { $dateToString: { format: "%b", date: "$_id" } },
-          items: { $sum: 1 },
-          firstId: { $min: "$_id" }
-        }
-      },
-      { $sort: { firstId: 1 } },
-      { $project: { name: "$_id", items: 1, _id: 0 } }
-    ]).toArray();
-
-    // 3. Security Analysis: Detect Unreturned Items
-    const highRiskUsers = await db.collection("users").aggregate([
-      {
-        $lookup: {
-          from: "requests",
-          localField: "email",
-          foreignField: "borrowerEmail",
-          as: "userRequests"
-        }
-      },
-      {
-        $project: {
-          name: 1,
-          email: 1,
-          pendingCount: {
-            $size: {
-              $filter: {
-                input: "$userRequests",
-                as: "r",
-                cond: { $eq: ["$$r.status", "pending"] }
-              }
-            }
-          }
-        }
-      },
-      { $match: { pendingCount: { $gt: 2 } } }
-    ]).toArray();
-
-    // 4. TOP USERS BY KARMA (Fetch this BEFORE the res.json)
-    const topUsers = await db.collection("users")
-      .find({})
-      .sort({ karma: -1 }) // Highest karma first
-      .limit(5)
-      .toArray();
-
-    // 5. SEND THE FINAL JSON
-    res.json({
-      categoryData: categoryStats.length > 0 ? categoryStats : [{ name: "None", value: 0 }],
-      growthData: growthStats.length > 0 ? growthStats : [{ name: "No Data", items: 0 }],
-      securityThreats: highRiskUsers,
-      topUsers: topUsers // Successfully added to the response object!
-    });
-
-  } catch (err) {
-    console.error("Admin API Error:", err);
-    res.status(500).json({ error: "Intelligence gathering failed" });
-  }
-});
-
-// --- ADDITIONAL ADMIN CONTROLS ---
-
-// Get all items with owner details for the Master List
 app.get('/api/admin/all-items', async (req, res) => {
   try {
     const items = await db.collection("items").find({}).toArray();
     res.json(items);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// System Health Stats
 app.get('/api/admin/system-stats', async (req, res) => {
   try {
     const users = await db.collection("users").countDocuments();
     const items = await db.collection("items").countDocuments();
     const requests = await db.collection("requests").countDocuments();
     res.json({ users, items, requests });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Admin Delete Item (Emergency)
-app.delete('/api/items/delete/:id', async (req, res) => {
+app.delete('/api/admin/emergency-delete/:id', async (req, res) => {
   try {
     await db.collection("items").deleteOne({ _id: new ObjectId(req.params.id) });
     res.json({ message: "Item purged from community list." });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/admin/dashboard-intelligence', async (req, res) => {
+  try {
+    const categoryStats = await db.collection("items").aggregate([
+      { $group: { _id: "$category", value: { $sum: 1 } } },
+      { $project: { name: "$_id", value: 1, _id: 0 } }
+    ]).toArray();
+
+    const growthStats = await db.collection("items").aggregate([
+      { $group: { _id: { $dateToString: { format: "%b", date: "$_id" } }, items: { $sum: 1 }, firstId: { $min: "$_id" } } },
+      { $sort: { firstId: 1 } },
+      { $project: { name: "$_id", items: 1, _id: 0 } }
+    ]).toArray();
+
+    const highRiskUsers = await db.collection("users").aggregate([
+      { $lookup: { from: "requests", localField: "email", foreignField: "borrowerEmail", as: "userRequests" } },
+      { $project: { name: 1, email: 1, pendingCount: { $size: { $filter: { input: "$userRequests", as: "r", cond: { $eq: ["$$r.status", "pending"] } } } } } },
+      { $match: { pendingCount: { $gt: 2 } } }
+    ]).toArray();
+
+    const topUsers = await db.collection("users").find({}).sort({ karma: -1 }).limit(5).toArray();
+
+    res.json({
+      categoryData: categoryStats.length > 0 ? categoryStats : [{ name: "None", value: 0 }],
+      growthData: growthStats.length > 0 ? growthStats : [{ name: "No Data", items: 0 }],
+      securityThreats: highRiskUsers,
+      topUsers: topUsers
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Intelligence gathering failed" });
   }
 });
 
-app.post('/api/users/register', async (req, res) => {
-  try {
-    const { email, name, address } = req.body;
+//! --- CATEGORY ROUTES ---=====================================================================================================================================
+app.get('/api/categories', async (req, res) => {
+  const categories = await db.collection('categories').find({}).toArray();
+  res.json(categories);
+});
 
-    const userProfile = {
-      email: email,
-      name: name,
-      address: address,
-      isVerified: true,
-      karma: 0,        // Start everyone at 0 for fair badge progression
-      totalDeals: 0,
-      createdAt: new Date()
-    };
+app.post('/api/categories/add', async (req, res) => {
+  const { name } = req.body;
+  await db.collection('categories').insertOne({ name, createdAt: new Date() });
+  res.json({ success: true });
+});
 
-    await db.collection("users").insertOne(userProfile);
-    res.status(201).json({ message: "Success! Profile created." });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.delete('/api/categories/:id', async (req, res) => {
+  const { id } = req.params;
+  await db.collection('categories').deleteOne({ _id: new ObjectId(id) });
+  res.json({ success: true });
 });
 
 startServer();
