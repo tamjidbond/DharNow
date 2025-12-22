@@ -28,9 +28,9 @@ const Home = () => {
   const filteredItems = items.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
-    
+
     // Simple location filter (checking if the address/description contains the location keyword)
-    const matchesLocation = !locationSearch || 
+    const matchesLocation = !locationSearch ||
       (item.address && item.address.toLowerCase().includes(locationSearch.toLowerCase())) ||
       (item.description && item.description.toLowerCase().includes(locationSearch.toLowerCase()));
 
@@ -45,23 +45,23 @@ const Home = () => {
 
   return (
     <div className="space-y-6 animate-fadeIn p-4 max-w-7xl mx-auto">
-      
+
       {/* 1. TOP SEARCH & LOCATION BAR */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-3">
           <FaSearch className="text-slate-400" />
-          <input 
+          <input
             type="text" value={searchTerm}
-            placeholder="Search items (e.g. Drill, Harry Potter)..." 
+            placeholder="Search items (e.g. Drill, Harry Potter)..."
             className="w-full outline-none bg-transparent"
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-3">
           <FaMapMarkerAlt className="text-indigo-500" />
-          <input 
+          <input
             type="text" value={locationSearch}
-            placeholder="Enter Area (e.g. Dhanmondi, Gulshan)..." 
+            placeholder="Enter Area (e.g. Dhanmondi, Gulshan)..."
             className="w-full outline-none bg-transparent"
             onChange={(e) => setLocationSearch(e.target.value)}
           />
@@ -71,25 +71,24 @@ const Home = () => {
       {/* 2. CATEGORY PILLS */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-2 mr-2 text-slate-500 font-bold text-sm">
-            <FaFilter /> Filters:
+          <FaFilter /> Filters:
         </div>
         {categories.map(cat => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
-            className={`px-5 py-2 rounded-full text-sm font-bold transition ${
-              selectedCategory === cat 
-              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" 
-              : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-400"
-            }`}
+            className={`px-5 py-2 rounded-full text-sm font-bold transition ${selectedCategory === cat
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
+                : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-400"
+              }`}
           >
             {cat}
           </button>
         ))}
         {(searchTerm || selectedCategory !== "All" || locationSearch) && (
-            <button onClick={resetFilters} className="text-red-500 text-sm font-bold flex items-center gap-1 ml-auto hover:underline">
-                <FaRedo className="text-xs" /> Reset
-            </button>
+          <button onClick={resetFilters} className="text-red-500 text-sm font-bold flex items-center gap-1 ml-auto hover:underline">
+            <FaRedo className="text-xs" /> Reset
+          </button>
         )}
       </div>
 
@@ -120,23 +119,24 @@ const Home = () => {
               <div className="relative">
                 {item.image && <img src={item.image} alt={item.title} className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500" />}
                 <div className="absolute top-3 left-3">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                        item.status === 'available' ? 'bg-emerald-500 text-white' : 'bg-orange-500 text-white'
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${item.status === 'available'
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-rose-500 text-white shadow-lg' // Red color for Booked
                     }`}>
-                        {item.status}
-                    </span>
+                    {item.status === 'booked' ? 'Booked' : item.status}
+                  </span>
                 </div>
               </div>
-              
+
               <div className="p-5">
                 <div className="text-[10px] font-black text-indigo-500 uppercase tracking-tighter mb-1">{item.category}</div>
                 <h3 className="font-bold text-lg text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">{item.title}</h3>
                 <p className="text-slate-500 text-xs line-clamp-2 italic mb-4">"{item.description}"</p>
-                
+
                 <div className="flex items-center justify-between border-t pt-4">
                   <div className="flex items-center gap-1 text-slate-400 text-[10px] font-bold">
                     <FaMapMarkerAlt />
-                    <span>Nearby</span>
+                    <span>{item.address}</span>
                   </div>
                   <Link to={`/item/${item._id}`} className="bg-slate-100 text-slate-800 px-4 py-2 rounded-xl font-bold text-xs hover:bg-indigo-600 hover:text-white transition">
                     View

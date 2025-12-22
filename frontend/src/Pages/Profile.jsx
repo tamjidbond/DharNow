@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { 
   FaBox, FaHandHoldingHeart, FaCheckCircle, 
-  FaUserCircle, FaEdit, FaTimes, FaMapMarkerAlt, FaUserEdit, FaCalendarAlt 
+  FaUserCircle, FaEdit, FaTimes, FaMapMarkerAlt, FaUserEdit, FaCalendarAlt,
+  FaListUl, FaTrashAlt
 } from 'react-icons/fa';
 
 const Profile = () => {
@@ -13,7 +14,6 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState(null);
 
-  // --- STATES FOR EDIT PROFILE ---
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [userData, setUserData] = useState({ 
     name: '', 
@@ -51,13 +51,24 @@ const Profile = () => {
           name: userRes.data.name || '',
           address: userRes.data.address || '',
           phone: userRes.data.phone || '',
-          createdAt: userRes.data.createdAt || '' // Capturing the join date
+          createdAt: userRes.data.createdAt || '' 
         });
       }
     } catch (err) {
       console.error("Fetch Error:", err);
     }
     setLoading(false);
+  };
+
+  const handleDeleteItem = async (itemId) => {
+    if(!window.confirm("Are you sure you want to delete this listing?")) return;
+    try {
+      await axios.delete(`http://localhost:8000/api/items/delete/${itemId}`);
+      alert("Item deleted!");
+      fetchProfileData(userEmail);
+    } catch (err) {
+      alert("Error deleting item");
+    }
   };
 
   const handleUpdateProfile = async (e) => {
@@ -145,70 +156,26 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* --- EDIT PROFILE MODAL --- */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 animate-fadeIn">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-black text-slate-800 flex items-center gap-2"><FaUserEdit className="text-indigo-600" /> Edit Profile</h2>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600"><FaTimes /></button>
-            </div>
-
-            <form onSubmit={handleUpdateProfile} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 block ml-1">Full Name</label>
-                <input
-                  type="text"
-                  className="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 ring-indigo-500"
-                  value={userData.name}
-                  onChange={(e) => setUserData({ ...userData, name: e.target.value })}
-                  placeholder="Enter your name"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 block ml-1">Phone Number</label>
-                <input
-                  type="text"
-                  className="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 ring-indigo-500"
-                  value={userData.phone}
-                  onChange={(e) => setUserData({ ...userData, phone: e.target.value })}
-                  placeholder="017XXXXXXXX"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 block ml-1">Home Address</label>
-                <input
-                  type="text"
-                  className="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 ring-indigo-500"
-                  value={userData.address}
-                  onChange={(e) => setUserData({ ...userData, address: e.target.value })}
-                  placeholder="e.g. Dhanmondi, Dhaka"
-                />
-              </div>
-              <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition">
-                Save Changes
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Tabs */}
-      <div className="flex gap-2 mb-8 bg-slate-200/50 p-1.5 rounded-2xl w-fit">
+      <div className="flex flex-wrap gap-2 mb-8 bg-slate-200/50 p-1.5 rounded-2xl w-fit">
         <button onClick={() => setActiveTab('lending')} className={`px-6 py-2.5 rounded-xl font-bold text-sm transition ${activeTab === 'lending' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>Lending Activity</button>
+        <button onClick={() => setActiveTab('listings')} className={`px-6 py-2.5 rounded-xl font-bold text-sm transition ${activeTab === 'listings' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>My Listings</button>
         <button onClick={() => setActiveTab('borrowing')} className={`px-6 py-2.5 rounded-xl font-bold text-sm transition ${activeTab === 'borrowing' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>My Borrowing</button>
       </div>
 
       {/* Lists */}
       <div className="grid grid-cols-1 gap-6">
-        {activeTab === 'lending' ? (
+        
+        {/* --- LENDING ACTIVITY TAB --- */}
+        {activeTab === 'lending' && (
           <div className="space-y-4">
             <h2 className="font-bold text-slate-700 flex items-center gap-2 px-2"><FaHandHoldingHeart className="text-rose-500" /> Incoming Requests</h2>
             {incomingRequests.length === 0 ? <p className="text-slate-400 italic bg-white p-10 rounded-3xl text-center border-2 border-dashed">No neighbors have requested your items yet.</p> :
               incomingRequests.map(req => (
                 <div key={req._id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
                   <div>
-                    <h3 className="font-bold text-slate-800 uppercase text-xs tracking-wider">Request for: {req.itemTitle || 'Your Item'}</h3>
+                    <h3 className="font-bold text-slate-800 uppercase text-xs tracking-wider">Request for: {req.itemTitle}</h3>
+                    <p className="text-indigo-600 text-sm font-bold">Borrower Phone: {req.borrowerPhone || "Not provided"}</p>
                     <p className="text-slate-500 italic text-sm mt-1">"{req.message}"</p>
                   </div>
                   <div className="flex gap-3">
@@ -234,7 +201,38 @@ const Profile = () => {
               ))
             }
           </div>
-        ) : (
+        )}
+
+        {/* --- MY LISTINGS TAB --- */}
+        {activeTab === 'listings' && (
+          <div className="space-y-4">
+            <h2 className="font-bold text-slate-700 flex items-center gap-2 px-2"><FaListUl className="text-indigo-600" /> My Listed Items</h2>
+            {myItems.length === 0 ? <p className="text-slate-400 italic bg-white p-10 rounded-3xl text-center border-2 border-dashed">You haven't listed any items for lending yet.</p> :
+              myItems.map(item => (
+                <div key={item._id} className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex justify-between items-center">
+                  <div className="flex items-center gap-4">
+                    <img src={item.image} alt="" className="w-16 h-16 object-cover rounded-xl bg-slate-100" />
+                    <div>
+                      <h3 className="font-bold text-slate-800">{item.title}</h3>
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${item.status === 'available' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                        {item.status}
+                      </span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => handleDeleteItem(item._id)}
+                    className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition"
+                  >
+                    <FaTrashAlt />
+                  </button>
+                </div>
+              ))
+            }
+          </div>
+        )}
+
+        {/* --- MY BORROWING TAB --- */}
+        {activeTab === 'borrowing' && (
           <div className="space-y-4">
             <h2 className="font-bold text-slate-700 flex items-center gap-2 px-2"><FaBox className="text-indigo-600" /> My Borrowing</h2>
             {myBorrowRequests.length === 0 ? <p className="text-slate-400 italic bg-white p-10 rounded-3xl text-center border-2 border-dashed">You haven't requested to borrow anything yet.</p> :
@@ -244,8 +242,10 @@ const Profile = () => {
                     <span className="font-bold text-slate-800">Borrowing: {req.itemTitle || "Requested Item"}</span>
                     <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">To be borrowed from: {req.lenderEmail}</p>
                   </div>
-                  <span className={`font-black text-[10px] px-4 py-1.5 rounded-full uppercase tracking-widest ${req.status === 'approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
-                    {req.status}
+                  <span className={`font-black text-[10px] px-4 py-1.5 rounded-full uppercase tracking-widest ${req.status === 'approved' ? 'bg-rose-100 text-rose-600' :
+                    req.status === 'completed' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
+                    }`}>
+                    {req.status === 'approved' ? 'Booked' : req.status}
                   </span>
                 </div>
               ))
@@ -253,6 +253,24 @@ const Profile = () => {
           </div>
         )}
       </div>
+
+      {/* --- EDIT PROFILE MODAL --- (Kept at bottom for clean code) */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 animate-fadeIn">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-black text-slate-800 flex items-center gap-2"><FaUserEdit className="text-indigo-600" /> Edit Profile</h2>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600"><FaTimes /></button>
+            </div>
+            <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <input type="text" className="w-full p-4 bg-slate-50 border rounded-2xl outline-none" value={userData.name} onChange={(e) => setUserData({ ...userData, name: e.target.value })} placeholder="Full Name" />
+              <input type="text" className="w-full p-4 bg-slate-50 border rounded-2xl outline-none" value={userData.phone} onChange={(e) => setUserData({ ...userData, phone: e.target.value })} placeholder="Phone Number" />
+              <input type="text" className="w-full p-4 bg-slate-50 border rounded-2xl outline-none" value={userData.address} onChange={(e) => setUserData({ ...userData, address: e.target.value })} placeholder="Home Address" />
+              <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition">Save Changes</button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
