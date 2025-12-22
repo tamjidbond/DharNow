@@ -305,14 +305,15 @@ app.patch('/api/requests/approve/:id', async (req, res) => {
 app.patch('/api/requests/complete/:id', async (req, res) => {
   try {
     const requestId = new ObjectId(req.params.id);
-    const request = await db.collection("requests").findOne({ _id: requestId });
+    const { rating, borrowerEmail } = req.body; // Ensure frontend sends these
 
+    const request = await db.collection("requests").findOne({ _id: requestId });
     if (!request) return res.status(404).json({ message: "Request not found" });
 
-    // 1. Update Request
+    // 1. Update Request status and save rating
     await db.collection("requests").updateOne(
       { _id: requestId },
-      { $set: { status: 'completed' } }
+      { $set: { status: 'completed', rating: rating || 5, completedAt: new Date() } }
     );
 
     // 2. Update Item back to available
@@ -321,8 +322,66 @@ app.patch('/api/requests/complete/:id', async (req, res) => {
       { $set: { status: 'available' } }
     );
 
-    res.json({ message: "Item is now Available" });
+    // 3. AWARD KARMA (The New Part)
+    // Give Borrower +10 points for returning the item
+    await db.collection("users").updateOne(
+      { email: request.borrowerEmail },
+      { $inc: { karma: 10, totalDeals: 1 } }
+    );
+
+    // Give Lender +15 points for helping a neighbor
+    await db.collection("users").updateOne(
+      { email: request.lenderEmail },
+      { $inc: { karma: 15, totalDeals: 1 } }
+    );
+
+    res.json({ message: "Item is Available & Karma Awarded!" });
   } catch (err) {
+    console.error("Complete Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// --- NEW REJECT ROUTE ---
+app.patch('/api/requests/reject/:id', async (req, res) => {
+  try {
+    const requestId = req.params.id;
+    // Update status to rejected
+    await db.collection("requests").updateOne(
+      { _id: new ObjectId(requestId) },
+      { $set: { status: 'rejected' } }
+    );
+    res.json({ message: "Request rejected successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- UPDATED DELETE ITEM ROUTE (With Cleanup) ---
+app.delete('/api/items/delete/:id', async (req, res) => {
+  try {
+    const itemId = req.params.id;
+
+    // 1. Delete the item itself
+    const deleteResult = await db.collection("items").deleteOne({
+      _id: new ObjectId(itemId)
+    });
+
+    if (deleteResult.deletedCount > 0) {
+      // 2. IMPORTANT: Remove all pending/approved requests for this item
+      // because the item no longer exists.
+      await db.collection("requests").deleteMany({
+        itemId: itemId, // Assuming you store the itemId as a string or ObjectId in requests
+        status: { $in: ['pending', 'approved'] }
+      });
+
+      res.json({ message: "Item and associated requests removed." });
+    } else {
+      res.status(404).json({ message: "Item not found" });
+    }
+  } catch (err) {
+    console.error("Delete Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -339,18 +398,16 @@ app.get('/api/admin/all-users', async (req, res) => {
 app.get('/api/admin/dashboard-intelligence', async (req, res) => {
   try {
     // 1. Real Category Data for the Pie Chart
-    // Groups items by category and counts them
     const categoryStats = await db.collection("items").aggregate([
       { $group: { _id: "$category", value: { $sum: 1 } } },
       { $project: { name: "$_id", value: 1, _id: 0 } }
     ]).toArray();
 
     // 2. Real Monthly Growth for the Area Chart
-    // Tracks listing activity over time
     const growthStats = await db.collection("items").aggregate([
       {
         $group: {
-          _id: { $dateToString: { format: "%b", date: "$_id" } }, // Uses ObjectId timestamp
+          _id: { $dateToString: { format: "%b", date: "$_id" } },
           items: { $sum: 1 },
           firstId: { $min: "$_id" }
         }
@@ -360,7 +417,6 @@ app.get('/api/admin/dashboard-intelligence', async (req, res) => {
     ]).toArray();
 
     // 3. Security Analysis: Detect Unreturned Items
-    // Finds users who have more than 2 'pending' borrow requests
     const highRiskUsers = await db.collection("users").aggregate([
       {
         $lookup: {
@@ -385,14 +441,24 @@ app.get('/api/admin/dashboard-intelligence', async (req, res) => {
           }
         }
       },
-      { $match: { pendingCount: { $gt: 2 } } } // Only show risks
+      { $match: { pendingCount: { $gt: 2 } } }
     ]).toArray();
 
+    // 4. TOP USERS BY KARMA (Fetch this BEFORE the res.json)
+    const topUsers = await db.collection("users")
+      .find({})
+      .sort({ karma: -1 }) // Highest karma first
+      .limit(5)
+      .toArray();
+
+    // 5. SEND THE FINAL JSON
     res.json({
       categoryData: categoryStats.length > 0 ? categoryStats : [{ name: "None", value: 0 }],
       growthData: growthStats.length > 0 ? growthStats : [{ name: "No Data", items: 0 }],
-      securityThreats: highRiskUsers
+      securityThreats: highRiskUsers,
+      topUsers: topUsers // Successfully added to the response object!
     });
+
   } catch (err) {
     console.error("Admin API Error:", err);
     res.status(500).json({ error: "Intelligence gathering failed" });
@@ -435,15 +501,14 @@ app.delete('/api/items/delete/:id', async (req, res) => {
 
 app.post('/api/users/register', async (req, res) => {
   try {
-    // Removed nidPhoto from the destructuring
     const { email, name, address } = req.body;
 
     const userProfile = {
       email: email,
       name: name,
       address: address,
-      isVerified: true, // Automatically verify since we aren't checking docs anymore
-      karma: 10,
+      isVerified: true,
+      karma: 0,        // Start everyone at 0 for fair badge progression
       totalDeals: 0,
       createdAt: new Date()
     };
