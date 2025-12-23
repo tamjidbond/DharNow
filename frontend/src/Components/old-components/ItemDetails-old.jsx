@@ -96,7 +96,7 @@ const ItemDetail = () => {
         if (!userEmail) {
             Swal.fire({
                 title: 'Sign In Required',
-                text: 'Join the DharLink community to borrow items!',
+                text: 'Join the DharNow community to borrow items!',
                 icon: 'warning',
                 confirmButtonColor: '#4f46e5',
                 confirmButtonText: 'Sign In Now',
@@ -214,7 +214,7 @@ const ItemDetail = () => {
     if (loading) return (
         <div className="flex flex-col items-center justify-center py-20">
             <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-indigo-600 font-bold">Opening DharLink item...</p>
+            <p className="text-indigo-600 font-bold">Opening DharNow item...</p>
         </div>
     );
 

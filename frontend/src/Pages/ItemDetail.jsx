@@ -72,7 +72,7 @@ const ItemDetail = () => {
     const handleRequest = async () => {
         const userEmail = localStorage.getItem('userEmail');
         if (!userEmail) {
-            Swal.fire({ title: 'Sign In Required', text: 'Join DharLink to borrow!', icon: 'warning', confirmButtonText: 'Sign In' })
+            Swal.fire({ title: 'Sign In Required', text: 'Join DharNow to borrow!', icon: 'warning', confirmButtonText: 'Sign In' })
                 .then((r) => r.isConfirmed && navigate('/register'));
             return;
         }
@@ -121,7 +121,7 @@ const ItemDetail = () => {
         setRequestLoading(false);
     };
 
-    if (loading) return <div className="py-20 text-center font-bold text-indigo-600">Syncing DharLink...</div>;
+    if (loading) return <div className="py-20 text-center font-bold text-indigo-600">Syncing DharNow...</div>;
     if (!data?.item) return <div className="py-20 text-center">Item not found.</div>;
 
     const { item, owner } = data;

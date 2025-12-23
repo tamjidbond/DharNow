@@ -21,7 +21,7 @@ const ItemGrid = ({ filteredItems, userCoords, calculateDistance, resetFilters }
                 const distance = userCoords && item.location?.coordinates ? calculateDistance(userCoords[0], userCoords[1], itemLat, itemLng) : null;
 
                 return (
-                    <div key={item._id} className="bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl transition-all group">
+                    <div key={item._id} className="bg-white rounded-[1rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl transition-all group">
                         <div className="relative h-52 overflow-hidden">
                             <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                             <div className="absolute top-4 left-4 flex flex-col gap-2">
@@ -39,8 +39,8 @@ const ItemGrid = ({ filteredItems, userCoords, calculateDistance, resetFilters }
                             <div className="text-[10px] font-black text-indigo-500 uppercase mb-2">{item.category}</div>
                             <h3 className="font-bold text-lg text-slate-800 mb-2 truncate group-hover:text-indigo-600 transition-colors">{item.title}</h3>
                             <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase mb-6"><FaMapMarkerAlt className="text-indigo-400" /><span className="truncate">{item.address || "Dhaka"}</span></div>
-                            <Link to={`/item/${item._id}`} className={`w-full block text-center py-3 rounded-2xl font-black text-xs uppercase transition-all ${item.status === 'available' ? 'bg-slate-50 text-slate-800 hover:bg-indigo-600 hover:text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}>
-                                {item.status === 'available' ? 'Check Availability' : 'Currently Booked'}
+                            <Link to={`/item/${item._id}`} className={`w-full block text-center py-3 rounded-2xl font-black text-xs uppercase transition-all ${item.status === 'available' ? 'bg-green-300 text-slate-800 hover:bg-indigo-600 hover:text-white' : 'bg-red-400 hover:bg-red-600 text-white'}`}>
+                                {item.status === 'available' ? 'View Details' : 'Currently Booked'}
                             </Link>
                         </div>
                     </div>

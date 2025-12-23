@@ -126,7 +126,7 @@ const Chat = () => {
         });
     };
 
-    if (loading) return <div className="p-20 text-center font-black animate-pulse text-indigo-600">Syncing DharLink Conversations...</div>;
+    if (loading) return <div className="p-20 text-center font-black animate-pulse text-indigo-600">Syncing DharNow Conversations...</div>;
 
     return (
         <div className="max-w-6xl mx-auto h-[85vh] bg-white mt-6 rounded-[3rem] shadow-2xl border border-slate-100 overflow-hidden flex">
@@ -243,7 +243,7 @@ const Chat = () => {
                         <div className="h-24 w-24 bg-indigo-50 text-indigo-200 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
                             <FaInbox size={40} />
                         </div>
-                        <h3 className="font-black text-slate-800 text-xl">Your DharLink Conversations</h3>
+                        <h3 className="font-black text-slate-800 text-xl">Your DharNow Conversations</h3>
                         <p className="text-slate-400 font-bold text-sm mt-2">Search for a neighbor or select a chat to begin</p>
                     </div>
                 )}

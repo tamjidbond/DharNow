@@ -113,7 +113,7 @@ const VerifyUser = () => {
         <div className="text-center space-y-4">
           <FaCheckCircle className="text-6xl text-emerald-500 mx-auto" />
           <h2 className="text-2xl font-bold">Successfully Registered!</h2>
-          <p className="text-slate-500">Your profile is being reviewed. You can now browse DharLink.</p>
+          <p className="text-slate-500">Your profile is being reviewed. You can now browse DharNow.</p>
           <button onClick={() => window.location.reload()} className="bg-indigo-600 text-white px-6 py-2 rounded-xl">Go to Map</button>
         </div>
       )}

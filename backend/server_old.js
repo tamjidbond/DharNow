@@ -65,11 +65,11 @@ app.post('/api/auth/send-otp', async (req, res) => {
     );
 
     await transporter.sendMail({
-      from: '"DharLink" <noreply@dharlink.com>',
+      from: '"DharNow" <noreply@dharlink.com>',
       to: email,
       subject: "Your Verification Code",
       html: `<div style="font-family:sans-serif; padding:20px;">
-              <h2>DharLink Verification</h2>
+              <h2>DharNow Verification</h2>
               <p>Your 6-digit code is: <b style="font-size:24px; color:#4f46e5;">${otp}</b></p>
              </div>`
     });

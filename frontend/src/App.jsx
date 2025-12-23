@@ -45,7 +45,7 @@
 //     const files = e.target.files;
 //     const data = new FormData();
 //     data.append('file', files[0]);
-//     data.append('upload_preset', 'dharlink_uploads');
+//     data.append('upload_preset', 'DharNow_uploads');
 
 //     setLoading(true);
 //     try {
@@ -102,7 +102,7 @@
 //       Swal.fire({
 //         icon: 'success',
 //         title: 'Item Posted!',
-//         text: 'Your item is now live on the DharLink map.',
+//         text: 'Your item is now live on the DharNow map.',
 //         timer: 2000,
 //         showConfirmButton: false
 //       });
@@ -130,7 +130,7 @@
 //         <div className="container mx-auto px-4 flex justify-between items-center">
 //           <div className="flex items-center gap-3">
 //             <FaHandsHelping className="text-3xl text-yellow-400" />
-//             <h1 className="text-3xl font-extrabold tracking-tight">DharLink</h1>
+//             <h1 className="text-3xl font-extrabold tracking-tight">DharNow</h1>
 //           </div>
 //           <p className="hidden sm:block font-medium opacity-90">Community Sharing Portal</p>
 //         </div>

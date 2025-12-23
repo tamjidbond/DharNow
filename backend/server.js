@@ -64,11 +64,11 @@ app.post('/api/auth/send-otp', async (req, res) => {
       { upsert: true }
     );
     await transporter.sendMail({
-      from: '"DharNow" <noreply@dharlink.com>',
+      from: '"DharNow" <noreply@dharnow.com>',
       to: email,
       subject: "Your Verification Code",
       html: `<div style="font-family:sans-serif; padding:20px;">
-              <h2>DharLink Verification</h2>
+              <h2>DharNow Verification</h2>
               <p>Your 6-digit code is: <b style="font-size:24px; color:#4f46e5;">${otp}</b></p>
              </div>`
     });
@@ -141,12 +141,27 @@ app.get('/api/users/profile-by-email/:email', async (req, res) => {
 });
 
 app.patch('/api/users/update/:email', async (req, res) => {
-  const { name, address, phone } = req.body;
-  await db.collection("users").updateOne(
-    { email: req.params.email },
-    { $set: { name, address, phone } }
-  );
-  res.json({ message: "Updated" });
+  // 1. Add 'profileImage' to the list of things to take from req.body
+  const { name, address, phone, profileImage } = req.body;
+
+  try {
+    await db.collection("users").updateOne(
+      { email: req.params.email },
+      {
+        // 2. Add 'profileImage' to the $set object so it saves to MongoDB
+        $set: {
+          name,
+          address,
+          phone,
+          profileImage
+        }
+      }
+    );
+    res.json({ message: "Updated" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
 });
 
 app.get('/api/users/search', async (req, res) => {

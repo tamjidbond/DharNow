@@ -1,3 +1,13 @@
-@import 'tailwindcss'
+@import "tailwindcss";
 
+@theme {
+  --color-main-dark: #1e1e1e;
+  --color-sec-dark: #1B211A;
+  --color-main-blue: #0947e2;
+  --color-dark-bg: #132440
+}
 
+/* Ensure the body changes color smoothly */
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}

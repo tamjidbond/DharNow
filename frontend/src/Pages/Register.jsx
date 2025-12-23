@@ -19,7 +19,7 @@ const Register = () => {
                 icon: 'error',
                 title: 'Email Failed',
                 text: 'We couldn’t send the verification code. Please check your internet connection or email address.',
-                confirmButtonColor: '#6366f1', // DharLink Indigo
+                confirmButtonColor: '#6366f1', 
                 background: '#ffffff',
                 footer: '<span style="color: #94a3b8; font-size: 11px;">Note: Free tier servers may take a moment to wake up.</span>'
             });
@@ -39,7 +39,7 @@ const Register = () => {
                 if (res.data.newUser) {
                     await axios.post('http://localhost:8000/api/users/register', {
                         email: email,
-                        name: "DharLink User", // Default placeholder
+                        name: "DharNow User", // Default placeholder
                         address: "Address not set",// Default placeholder
                     });
                 }
@@ -66,7 +66,7 @@ const Register = () => {
             {/* STEP 1: EMAIL INPUT */}
             {step === 1 && (
                 <div className="space-y-6 text-center">
-                    <h2 className="text-2xl font-black">DharLink Sign In</h2>
+                    <h2 className="text-2xl font-black">DharNow Sign In</h2>
                     <p className="text-slate-500 text-sm">Enter your email to receive a code</p>
                     <input
                         className="w-full p-4 border rounded-2xl bg-slate-50 outline-none focus:ring-2 ring-indigo-500"
