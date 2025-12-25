@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
-import Swal from 'sweetalert2'; // Added Swal
-import { FaPaperPlane, FaUserCircle, FaInbox, FaSearch, FaArrowLeft, FaPlus } from 'react-icons/fa';
+import Swal from 'sweetalert2';
+import { FaPaperPlane, FaUserCircle, FaInbox, FaSearch, FaArrowLeft, FaPlus, FaBoxOpen } from 'react-icons/fa';
+import { useNavigate } from 'react-router';
 
 const Chat = () => {
     const [conversations, setConversations] = useState([]);
@@ -16,6 +17,7 @@ const Chat = () => {
 
     const userEmail = localStorage.getItem('userEmail');
     const scrollRef = useRef();
+    const navigate = useNavigate();
 
     // SweetAlert Toast Configuration
     const Toast = Swal.mixin({
@@ -36,14 +38,14 @@ const Chat = () => {
                 m.senderEmail === userEmail ? m.receiverEmail : m.senderEmail
             ))];
             setConversations(uniquePeople);
-        } catch (err) { 
-            console.error(err); 
+        } catch (err) {
+            console.error(err);
         }
         setLoading(false);
     };
 
     useEffect(() => {
-        if(userEmail) fetchChats();
+        if (userEmail) fetchChats();
     }, [userEmail]);
 
     // Live Search Logic
@@ -106,8 +108,7 @@ const Chat = () => {
             setMessages([...messages, { ...msgData, createdAt: new Date() }]);
             setNewMessage("");
             if (!conversations.includes(activeChat)) fetchChats();
-        } catch (err) { 
-            // Integrated SweetAlert2 Error
+        } catch (err) {
             Swal.fire({
                 icon: 'error',
                 title: 'Message Not Sent',
@@ -212,10 +213,32 @@ const Chat = () => {
                             {messages.map((m, index) => (
                                 <div key={index} className={`flex ${m.senderEmail === userEmail ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`max-w-[75%] p-4 rounded-[1.8rem] font-bold text-sm shadow-sm ${m.senderEmail === userEmail
-                                            ? 'bg-indigo-600 text-white rounded-br-none'
-                                            : 'bg-white text-slate-700 rounded-bl-none border border-slate-100'
+                                        ? 'bg-indigo-600 text-white rounded-br-none'
+                                        : 'bg-white text-slate-700 rounded-bl-none border border-slate-100'
                                         }`}>
+
                                         {m.text}
+
+                                        {/* ATTACHED ITEM CARD - HANDSHAKE SYSTEM */}
+                                        {m.itemId && (
+                                            <div className={`mt-3 p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer ${m.senderEmail === userEmail
+                                                ? 'bg-white/10 border-white/20 hover:bg-white/20'
+                                                : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}
+                                                onClick={() => navigate(`/item/${m.itemId}`)}
+                                            >
+                                                <div className={`p-2 rounded-xl ${m.senderEmail === userEmail ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-600'}`}>
+                                                    <FaBoxOpen size={16} />
+                                                </div>
+                                                <div className="flex-1 min-w-0 text-left">
+                                                    <p className={`text-[9px] font-black uppercase tracking-widest ${m.senderEmail === userEmail ? 'text-indigo-100' : 'text-slate-400'}`}>Attached Item</p>
+                                                    <p className={`text-xs font-black truncate ${m.senderEmail === userEmail ? 'text-white' : 'text-slate-800'}`}>{m.itemTitle}</p>
+                                                </div>
+                                                <div className={`text-[9px] font-black uppercase px-2 py-1 rounded-md ${m.senderEmail === userEmail ? 'bg-white text-indigo-600' : 'bg-indigo-600 text-white'}`}>
+                                                    View
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <p className={`text-[8px] mt-1 opacity-60 ${m.senderEmail === userEmail ? 'text-right' : 'text-left'}`}>
                                             {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </p>

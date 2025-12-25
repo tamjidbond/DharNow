@@ -3,6 +3,8 @@ import { FaPlusCircle, FaUserCircle, FaSignOutAlt, FaSearch, FaHandsHelping } fr
 import { useNavigate, NavLink, Link } from 'react-router';
 import axios from 'axios';
 import { SiGooglemessages } from "react-icons/si";
+import { LuHandHelping } from "react-icons/lu";
+
 
 const Navbar = () => {
   const [userEmail, setUserEmail] = useState(null);
@@ -62,7 +64,7 @@ const Navbar = () => {
           {/* LOGO */}
           <Link to="/" className="flex items-center gap-2 group">
             <div className="bg-main-blue p-1.5 rounded-lg rotate-3 group-hover:rotate-0 transition-transform">
-                <FaHandsHelping className="text-white text-xl" />
+              <FaHandsHelping className="text-white text-xl" />
             </div>
             <span className="text-xl md:text-2xl font-black tracking-tighter text-white">
               Dhar<span className="text-main-blue">Now</span>
@@ -81,13 +83,14 @@ const Navbar = () => {
                       <SiGooglemessages className="text-xl" />
                       {unreadCount > 0 && (
                         <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[10px] font-black h-4 w-4 rounded-full flex items-center justify-center border-2 border-main-dark animate-bounce">
-                            {unreadCount}
+                          {unreadCount}
                         </span>
                       )}
                     </div>
                     <span>Inbox</span>
                   </NavLink>
                   <NavLink to="/lend" className={getLinkStyle}><FaPlusCircle /><span>Lend</span></NavLink>
+                  <NavLink to="/requestBoard" className={getLinkStyle}><LuHandHelping></LuHandHelping><span>Request Board</span></NavLink>
                   <NavLink to="/profile" className={getLinkStyle}><FaUserCircle /><span>Profile</span></NavLink>
                 </>
               )}
@@ -118,7 +121,7 @@ const Navbar = () => {
       {userEmail && (
         <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-main-dark/80 backdrop-blur-xl border border-white/10 px-4 py-3 z-[1000] flex justify-around items-center rounded-[2rem] shadow-2xl">
           <NavLink to="/" className={getLinkStyle}><FaSearch className="text-xl" /></NavLink>
-          
+
           <NavLink to="/inbox" className={getLinkStyle}>
             <div className="relative">
               <SiGooglemessages className="text-xl" />
@@ -129,6 +132,7 @@ const Navbar = () => {
           </NavLink>
 
           <NavLink to="/lend" className={getLinkStyle}><FaPlusCircle className="text-xl" /></NavLink>
+          <NavLink to="/requestBoard" className={getLinkStyle}><LuHandHelping className="text-xl" /></NavLink>
           <NavLink to="/profile" className={getLinkStyle}><FaUserCircle className="text-xl" /></NavLink>
         </div>
       )}

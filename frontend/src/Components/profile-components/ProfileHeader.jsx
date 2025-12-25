@@ -38,7 +38,7 @@ const ProfileHeader = ({ userData, currentBadge, setIsEditModalOpen }) => {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
+    <div className="w-full max-w-6xl mx-auto mb-6">
       {/* --- MAIN PROFILE CARD --- */}
       <div className="relative bg-white rounded-[3rem] p-6 md:p-12 shadow-2xl shadow-slate-200/60 border border-slate-100 mb-10 overflow-hidden group">
 

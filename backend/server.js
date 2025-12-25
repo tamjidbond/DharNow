@@ -577,6 +577,18 @@ app.get('/api/admin/dashboard-intelligence', async (req, res) => {
 });
 
 //! --- CATEGORY ROUTES ---=====================================================================================================================================
+app.get('/api/items/count-by-category/:categoryName', async (req, res) => {
+  try {
+    const { categoryName } = req.params;
+    // Count how many items have this category string
+    const count = await db.collection('items').countDocuments({ category: categoryName });
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ error: "Could not count items" });
+  }
+});
+
+
 app.get('/api/categories', async (req, res) => {
   const categories = await db.collection('categories').find({}).toArray();
   res.json(categories);
@@ -592,6 +604,80 @@ app.delete('/api/categories/:id', async (req, res) => {
   const { id } = req.params;
   await db.collection('categories').deleteOne({ _id: new ObjectId(id) });
   res.json({ success: true });
+});
+
+
+
+
+// !-================================================================--- 7. Community Wish Routes ---==========================================================================
+
+// --- BROADCAST A WISH ---
+app.post('/api/wishes/create', async (req, res) => {
+  try {
+    const { name, category, requesterEmail } = req.body;
+    const newWish = {
+      name,
+      category,
+      requesterEmail,
+      status: 'open',
+      createdAt: new Date()
+    };
+    const result = await db.collection("wishes").insertOne(newWish);
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to broadcast wish: " + err.message });
+  }
+});
+
+// --- GET ALL OPEN WISHES ---
+app.get('/api/wishes', async (req, res) => {
+  try {
+    const wishes = await db.collection("wishes").aggregate([
+      { $match: { status: 'open' } },
+      {
+        $lookup: {
+          from: "users",               // Name of your users collection
+          localField: "requesterEmail", // Field in wishes
+          foreignField: "email",        // Field in users
+          as: "posterDetails"
+        }
+      },
+      { $unwind: "$posterDetails" },   // Turn array into an object
+      { $sort: { createdAt: -1 } }     // Newest first
+    ]).toArray();
+    res.json(wishes);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch wishes" });
+  }
+});
+
+// --- DELETE A WISH (User removes their own) ---
+app.delete('/api/wishes/delete/:id', async (req, res) => {
+  try {
+    const result = await db.collection("wishes").deleteOne({
+      _id: new ObjectId(req.params.id)
+    });
+    if (result.deletedCount === 1) {
+      res.json({ message: "Wish removed from board." });
+    } else {
+      res.status(404).json({ message: "Wish not found." });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- OPTIONAL: CLOSE WISH WHEN FULFILLED ---
+app.patch('/api/wishes/fulfill/:id', async (req, res) => {
+  try {
+    await db.collection("wishes").updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { status: 'fulfilled' } }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 startServer();

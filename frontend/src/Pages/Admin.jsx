@@ -54,8 +54,8 @@ const Admin = () => {
       setStats(s.data);
       setIntelligence(intel.data);
       setCategories(cat.data);
-    } catch (err) { 
-      console.error("Admin Fetch Error:", err); 
+    } catch (err) {
+      console.error("Admin Fetch Error:", err);
     }
     setLoading(false);
   };
@@ -70,32 +70,75 @@ const Admin = () => {
       setNewCategoryName("");
       fetchAllAdminData();
       Toast.fire({ icon: 'success', title: 'Category added successfully' });
-    } catch (err) { 
+    } catch (err) {
       Swal.fire({ icon: 'error', title: 'Failed', text: 'Could not add category', background: '#0f172a', color: '#fff' });
     }
   };
 
   const handleDeleteCategory = async (id) => {
-    const result = await Swal.fire({
-      title: 'Are you sure?',
-      text: "You won't be able to revert this!",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#6366f1',
-      cancelButtonColor: '#ef4444',
-      confirmButtonText: 'Yes, delete it!',
-      background: '#1e293b',
-      color: '#fff'
-    });
+    // Find the category name from the ID for our check
+    const categoryToProcess = categories.find(c => c._id === id);
+    const categoryName = categoryToProcess ? categoryToProcess.name : "";
 
-    if (result.isConfirmed) {
-      try {
-        await axios.delete(`http://localhost:8000/api/categories/${id}`);
-        fetchAllAdminData();
-        Toast.fire({ icon: 'success', title: 'Category removed' });
-      } catch (err) { 
-        Swal.fire('Error!', 'Delete failed.', 'error'); 
+    try {
+      // STEP 1: Check if items are currently using this category
+      const checkRes = await axios.get(`http://localhost:8000/api/items/count-by-category/${categoryName}`);
+      const itemCount = checkRes.data.count;
+
+      if (itemCount > 0) {
+        // STEP 2: First Warning (If items exist)
+        const warningResult = await Swal.fire({
+          title: 'DANGER: Category in Use!',
+          text: `There are ${itemCount} items listed under "${categoryName}". Deleting this will leave these items without a category.`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#ef4444',
+          confirmButtonText: 'I understand, proceed',
+          background: '#1e293b',
+          color: '#fff',
+          customClass: { popup: 'rounded-[2rem]' }
+        });
+
+        if (!warningResult.isConfirmed) return;
+
+        // STEP 3: Second Step - Typed Confirmation
+        const { value: confirmText } = await Swal.fire({
+          title: 'Final Protocol',
+          text: `Type "DELETE" to permanently remove "${categoryName}"`,
+          input: 'text',
+          inputPlaceholder: 'DELETE',
+          showCancelButton: true,
+          confirmButtonColor: '#ef4444',
+          background: '#1e293b',
+          color: '#fff',
+          inputValidator: (value) => {
+            if (value !== 'DELETE') return 'You must type DELETE exactly!';
+          }
+        });
+
+        if (confirmText !== 'DELETE') return;
+      } else {
+        // Standard Confirmation for empty categories
+        const simpleConfirm = await Swal.fire({
+          title: 'Delete Category?',
+          text: `Are you sure you want to remove "${categoryName}"?`,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonColor: '#6366f1',
+          background: '#1e293b',
+          color: '#fff'
+        });
+        if (!simpleConfirm.isConfirmed) return;
       }
+
+      // STEP 4: Execution
+      await axios.delete(`http://localhost:8000/api/categories/${id}`);
+      fetchAllAdminData();
+      Toast.fire({ icon: 'success', title: 'Category permanently purged' });
+
+    } catch (err) {
+      console.error("Deletion Error:", err);
+      Swal.fire({ icon: 'error', title: 'Action Failed', text: 'Error communicating with database.' });
     }
   };
 
@@ -115,8 +158,8 @@ const Admin = () => {
         await axios.delete(`http://localhost:8000/api/items/delete/${id}`);
         fetchAllAdminData();
         Toast.fire({ icon: 'success', title: 'Item deleted' });
-      } catch (err) { 
-        Swal.fire('Error!', 'Delete failed.', 'error'); 
+      } catch (err) {
+        Swal.fire('Error!', 'Delete failed.', 'error');
       }
     }
   };

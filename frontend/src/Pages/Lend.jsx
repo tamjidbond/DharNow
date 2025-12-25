@@ -3,7 +3,7 @@ import axios from 'axios';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import { FaPlus, FaCamera, FaMapMarkerAlt, FaCheckCircle, FaPhoneAlt, FaEnvelope, FaTag, FaClock } from 'react-icons/fa';
 import L from 'leaflet';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router'; 
 import Swal from 'sweetalert2';
 
 // 1. Fix Leaflet Icons (Crucial for the map to show markers correctly)
@@ -11,10 +11,10 @@ import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
 let DefaultIcon = L.icon({
-    iconUrl: markerIcon,
-    shadowUrl: markerShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
@@ -55,16 +55,22 @@ const LocationMarker = ({ setCoordinates }) => {
 // 3. Main Lend Component
 const Lend = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const userEmail = localStorage.getItem('userEmail');
 
+  // Catch data passed from RequestBoard (The "Wish" context)
+  const predefinedName = location.state?.predefinedName || '';
+  const wishId = location.state?.wishId || null;
+  const targetUser = location.state?.targetUser || null;
+
   const [formData, setFormData] = useState({
-    title: '',
+    title: predefinedName, // Auto-fills if fulfilling a wish
     description: '',
-    category: '', 
+    category: '',
     price: '',
     priceType: 'Day',
     phone: '',
-    address: '', 
+    address: '',
   });
 
   const [categories, setCategories] = useState([]);
@@ -74,29 +80,28 @@ const Lend = () => {
   const [fetchingUser, setFetchingUser] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // --- FETCH DYNAMIC CATEGORIES FROM DATABASE ---
+  // --- FETCH DYNAMIC CATEGORIES ---
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await axios.get('http://localhost:8000/api/categories');
         if (res.data && res.data.length > 0) {
           setCategories(res.data);
-          setFormData(prev => ({ ...prev, category: res.data[0].name }));
+          if(!formData.category) setFormData(prev => ({ ...prev, category: res.data[0].name }));
         } else {
-          // If database returns empty, use these defaults
           const defaults = [{ name: 'Tools' }, { name: 'Books' }, { name: 'Electronics' }, { name: 'Other' }];
           setCategories(defaults);
-          setFormData(prev => ({ ...prev, category: 'Tools' }));
+          if(!formData.category) setFormData(prev => ({ ...prev, category: 'Tools' }));
         }
       } catch (err) {
         console.error("Categories fetch failed, using fallbacks.");
         const fallbacks = [{ name: 'Tools' }, { name: 'Books' }, { name: 'Electronics' }, { name: 'Other' }];
         setCategories(fallbacks);
-        setFormData(prev => ({ ...prev, category: 'Tools' }));
+        if(!formData.category) setFormData(prev => ({ ...prev, category: 'Tools' }));
       }
     };
     fetchCategories();
-  }, []);
+  }, [formData.category]);
 
   // --- AUTO-FILL USER PROFILE ---
   useEffect(() => {
@@ -119,13 +124,25 @@ const Lend = () => {
     fetchUserProfile();
   }, [userEmail]);
 
-  // --- CONVERT IMAGE TO BASE64 ---
-  const convertToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
+  // --- IMAGE RESIZER (Protects Free DB Storage) ---
+  const processImage = (file) => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800; // Resize to reasonable width
+          const scaleSize = MAX_WIDTH / img.width;
+          canvas.width = MAX_WIDTH;
+          canvas.height = img.height * scaleSize;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% quality compression
+        };
+      };
     });
   };
 
@@ -143,14 +160,31 @@ const Lend = () => {
 
     setLoading(true);
     try {
-      const base64Image = await convertToBase64(itemImage);
+      // Compress image before sending to free MongoDB
+      const compressedBase64 = await processImage(itemImage);
 
-      await axios.post('http://localhost:8000/api/items/add', {
+      // 1. Add Item to Database
+      const itemResponse = await axios.post('http://localhost:8000/api/items/add', {
         ...formData,
-        image: base64Image,
+        image: compressedBase64,
         coordinates: coordinates,
         lentBy: userEmail,
+        wishId: wishId // Link to wish if applicable
       });
+
+      // 2. Automated Handshake Message to Neighbor
+      if (targetUser) {
+        // Extract ID from response (handle both MongoDB direct and custom responses)
+        const newItemId = itemResponse.data.itemId || itemResponse.data._id;
+        
+        await axios.post('http://localhost:8000/api/messages/send', {
+          senderEmail: userEmail,
+          receiverEmail: targetUser,
+          itemId: newItemId,
+          itemTitle: formData.title,
+          text: `Hi! I saw your wish for "${predefinedName}" and I've just listed it for you. You can view the details and request it here!`
+        });
+      }
 
       setSuccess(true);
       setTimeout(() => navigate('/'), 2500);
@@ -166,14 +200,13 @@ const Lend = () => {
     setLoading(false);
   };
 
-  // Success Screen
   if (success) {
     return (
-      <div className="max-w-md mx-auto mt-20 p-10 bg-white rounded-3xl shadow-2xl text-center border border-emerald-100">
+      <div className="max-w-md mx-auto mt-20 p-10 bg-white rounded-[3rem] shadow-2xl text-center border border-emerald-100">
         <FaCheckCircle className="text-6xl text-emerald-500 mb-6 mx-auto" />
-        <h2 className="text-2xl font-black text-slate-800 mb-2">Item Listed!</h2>
-        <p className="text-slate-500 mb-8 font-medium">Your neighbors on DharLink can now find your item.</p>
-        <button onClick={() => navigate('/')} className="bg-indigo-600 text-white px-8 py-3 rounded-full font-bold transition hover:bg-indigo-700">
+        <h2 className="text-2xl font-black text-slate-800 mb-2 tracking-tighter">Item Listed!</h2>
+        <p className="text-slate-500 mb-8 font-bold text-sm uppercase tracking-widest">Your neighbor has been notified.</p>
+        <button onClick={() => navigate('/')} className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-indigo-200 transition hover:bg-indigo-700">
           Back Home
         </button>
       </div>
@@ -181,30 +214,31 @@ const Lend = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-100 my-10">
-      {/* Header */}
-      <div className="mb-8 border-b border-slate-100 pb-6 flex justify-between items-center">
+    <div className="max-w-5xl mx-auto bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100 my-10">
+      <div className="mb-10 border-b border-slate-50 pb-8 flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-black text-slate-800 flex items-center gap-3">
-            <FaPlus className="text-indigo-600" /> Lend an Item
+          <h2 className="text-4xl font-black text-slate-900 tracking-tighter flex items-center gap-4">
+            <div className="p-3 bg-indigo-600 rounded-2xl text-white"><FaPlus size={20} /></div> 
+            {predefinedName ? "Fulfill a Wish" : "Lend an Item"}
           </h2>
-          <p className="text-slate-500 mt-2 font-medium">Share your item with the community.</p>
+          <p className="text-slate-500 mt-2 font-bold uppercase tracking-widest text-xs">
+            {predefinedName ? `Helping a neighbor with: ${predefinedName}` : "Share your item with the community."}
+          </p>
         </div>
         {fetchingUser && (
-           <span className="text-xs font-bold text-indigo-500 animate-pulse bg-indigo-50 px-3 py-1 rounded-full">Fetching details...</span>
+          <span className="text-xs font-bold text-indigo-500 animate-pulse bg-indigo-50 px-3 py-1 rounded-full uppercase tracking-widest">Fetching Profile...</span>
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        
-        {/* Row 1: Title and Category */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-10">
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-6">
             <div>
-              <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Item Title</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-2">Item Title</label>
               <input
                 type="text"
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 ring-indigo-500 mt-1 transition"
+                className="w-full p-5 bg-slate-50 border border-slate-100 rounded-[2rem] outline-none focus:ring-4 ring-indigo-50 mt-1 font-bold text-slate-700"
                 placeholder="e.g. Electric Drill"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -213,9 +247,9 @@ const Lend = () => {
             </div>
 
             <div>
-              <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Category</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-2">Category</label>
               <select
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 ring-indigo-500 mt-1 transition cursor-pointer"
+                className="w-full p-5 bg-slate-50 border border-slate-100 rounded-[2rem] outline-none focus:ring-4 ring-indigo-50 mt-1 font-bold text-slate-700 appearance-none"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               >
@@ -227,10 +261,10 @@ const Lend = () => {
           </div>
 
           <div>
-            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Description</label>
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-2">Description</label>
             <textarea
               rows="5"
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 ring-indigo-500 mt-1 resize-none transition"
+              className="w-full p-5 bg-slate-50 border border-slate-100 rounded-[2rem] outline-none focus:ring-4 ring-indigo-50 mt-1 resize-none font-bold text-slate-700"
               placeholder="Condition, rules, or features."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -239,15 +273,14 @@ const Lend = () => {
           </div>
         </div>
 
-        {/* Price Section */}
-        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-slate-50/50 p-8 rounded-[3rem] grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
-            <label className="text-xs font-black uppercase tracking-widest text-indigo-400 ml-1 flex items-center gap-2">
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 ml-2 flex items-center gap-2">
               <FaTag /> Price (0 for Free)
             </label>
             <input
               type="number"
-              className="w-full p-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 ring-indigo-500 mt-1"
+              className="w-full p-5 bg-white border border-slate-100 rounded-[1.5rem] outline-none focus:ring-4 ring-indigo-50 mt-1 font-black text-slate-700"
               placeholder="e.g. 50"
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
@@ -255,16 +288,16 @@ const Lend = () => {
             />
           </div>
           <div>
-            <label className="text-xs font-black uppercase tracking-widest text-indigo-400 ml-1 flex items-center gap-2">
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 ml-2 flex items-center gap-2">
               <FaClock /> Price Per
             </label>
-            <div className="flex gap-2 mt-1">
+            <div className="flex gap-3 mt-1">
               {['Hour', 'Day'].map(type => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => setFormData({ ...formData, priceType: type })}
-                  className={`flex-1 p-4 rounded-2xl font-bold transition ${formData.priceType === type ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-500'}`}
+                  className={`flex-1 p-5 rounded-[1.5rem] font-black text-xs uppercase tracking-widest transition-all ${formData.priceType === type ? 'bg-indigo-600 text-white shadow-xl' : 'bg-white text-slate-400 border border-slate-100'}`}
                 >
                   {type}
                 </button>
@@ -273,27 +306,26 @@ const Lend = () => {
           </div>
         </div>
 
-        {/* Contact Info */}
-        <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-indigo-50/30 p-8 rounded-[3rem] grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
-            <label className="text-xs font-black uppercase tracking-widest text-indigo-400 ml-1 flex items-center gap-2">
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 ml-2 flex items-center gap-2">
               <FaPhoneAlt /> Phone (Auto)
             </label>
-            <input type="text" className="w-full p-4 bg-indigo-100/50 border border-indigo-200 rounded-2xl mt-1 text-slate-500" value={formData.phone} disabled />
+            <input type="text" className="w-full p-5 bg-white/50 border border-indigo-100 rounded-[1.5rem] mt-1 text-slate-400 font-bold" value={formData.phone} disabled />
           </div>
           <div>
-            <label className="text-xs font-black uppercase tracking-widest text-indigo-400 ml-1 flex items-center gap-2">
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 ml-2 flex items-center gap-2">
               <FaEnvelope /> Email (Auto)
             </label>
-            <input type="text" className="w-full p-4 bg-indigo-100/50 border border-indigo-200 rounded-2xl mt-1 text-slate-500" value={userEmail || ''} disabled />
+            <input type="text" className="w-full p-5 bg-white/50 border border-indigo-100 rounded-[1.5rem] mt-1 text-slate-400 font-bold" value={userEmail || ''} disabled />
           </div>
           <div className="md:col-span-2">
-            <label className="text-xs font-black uppercase tracking-widest text-indigo-400 ml-1 flex items-center gap-2">
-              <FaMapMarkerAlt /> Precise Landmark / House Address (Manual)
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 ml-2 flex items-center gap-2">
+              <FaMapMarkerAlt /> House Address / Precise Landmark
             </label>
             <input
               type="text"
-              className="w-full p-4 bg-white border border-indigo-100 rounded-2xl outline-none focus:ring-2 ring-indigo-500 mt-1 transition"
+              className="w-full p-5 bg-white border border-indigo-100 rounded-[1.5rem] outline-none focus:ring-4 ring-indigo-50 mt-1 transition font-bold"
               placeholder="e.g. Green View Apartment, House 4, Road 2"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
@@ -302,27 +334,26 @@ const Lend = () => {
           </div>
         </div>
 
-        {/* Image & Map Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           <div>
-            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Item Photo</label>
-            <div className="mt-1 border-2 border-dashed border-slate-200 p-10 rounded-3xl text-center bg-slate-50 hover:bg-white transition relative">
-              <input 
-                type="file" 
-                className="absolute inset-0 opacity-0 cursor-pointer" 
-                accept="image/*" 
-                onChange={(e) => setItemImage(e.target.files[0])} 
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-2">Item Photo</label>
+            <div className="mt-2 border-4 border-dashed border-slate-100 p-12 rounded-[3rem] text-center bg-slate-50 hover:bg-white hover:border-indigo-200 transition-all relative overflow-hidden group">
+              <input
+                type="file"
+                className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                accept="image/*"
+                onChange={(e) => setItemImage(e.target.files[0])}
               />
-              <FaCamera className="text-4xl text-indigo-300 mx-auto mb-2" />
-              <p className="text-sm font-bold text-slate-600">
+              <FaCamera className="text-5xl text-indigo-200 mx-auto mb-4 group-hover:scale-110 transition-transform" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 {itemImage ? itemImage.name : "Click to Upload Photo"}
               </p>
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Pin Pickup Point</label>
-            <div className="h-44 mt-1 rounded-3xl overflow-hidden border-4 border-slate-50 z-0">
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-2">Pin Pickup Point</label>
+            <div className="h-56 mt-2 rounded-[3rem] overflow-hidden border-8 border-slate-50 z-0">
               <MapContainer center={[23.8103, 90.4125]} zoom={13} style={{ height: '100%', width: '100%' }}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <LocationMarker setCoordinates={setCoordinates} />
@@ -331,13 +362,12 @@ const Lend = () => {
           </div>
         </div>
 
-        {/* Submit Button */}
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black text-xl hover:bg-indigo-600 transition-all shadow-xl disabled:opacity-50"
+          className="w-full bg-slate-900 text-white py-7 rounded-[2.5rem] font-black text-xs uppercase tracking-[0.3em] hover:bg-indigo-600 transition-all shadow-2xl disabled:opacity-50"
         >
-          {loading ? "Posting to DharLink..." : "Post to DharNow"}
+          {loading ? "Syncing with DharLink..." : "Post to DharNow"}
         </button>
       </form>
     </div>
