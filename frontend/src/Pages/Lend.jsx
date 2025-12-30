@@ -176,8 +176,7 @@ const Lend = () => {
 
       // 3. Extract the new Item ID
       // Check both common response patterns
-      const newItemId = itemResponse.data.item?._id || itemResponse.data._id || itemResponse.data.itemId;
-
+      const newItemId = itemResponse.data.item?._id || itemResponse.data._id || itemResponse.data.itemId || itemResponse.data.insertedId;
       // 4. Automated Handshake Message
       if (targetUser && newItemId) {
         await axios.post('https://dharnow.onrender.com/api/messages/send', {

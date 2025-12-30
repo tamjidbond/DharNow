@@ -14,7 +14,7 @@ const PostWish = ({ onWishPosted }) => {
             .then(res => res.json())
             .then(data => {
                 setCategories(data);
-                
+
             })
             .catch(err => console.error("Could not load categories:", err));
     }, []);
