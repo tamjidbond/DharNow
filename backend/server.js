@@ -84,7 +84,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
       subject: "Your DharNow Verification Code",
       html: `
     <div style="font-family:Arial,sans-serif">
-      <h2>DharNow OTP</h2>
+      <h2>DharNow OTP is: </h2>
       <h1 style="letter-spacing:4px">${otp}</h1>
       <p>This code expires in 5 minutes.</p>
     </div>
