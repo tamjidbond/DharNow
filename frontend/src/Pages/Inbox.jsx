@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-import { FaPaperPlane, FaInbox, FaSearch, FaArrowLeft, FaPlus, FaBoxOpen, FaCircle, FaEllipsisV } from 'react-icons/fa';
+import { FaPaperPlane, FaUserCircle, FaInbox, FaSearch, FaArrowLeft, FaPlus, FaBoxOpen } from 'react-icons/fa';
 import { useNavigate } from 'react-router';
 import ChatSkeleton from '../Components/Skeletons/ChatSkeleton';
 
@@ -11,6 +11,8 @@ const Chat = () => {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
     const [loading, setLoading] = useState(true);
+
+    // --- SEARCH STATES ---
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
 
@@ -18,17 +20,18 @@ const Chat = () => {
     const scrollRef = useRef();
     const navigate = useNavigate();
 
-    // Redesigned Toast for the White Theme
+    // SweetAlert Toast Configuration
     const Toast = Swal.mixin({
         toast: true,
         position: 'top-end',
         showConfirmButton: false,
-        timer: 2000,
+        timer: 3000,
+        timerProgressBar: true,
         background: '#ffffff',
-        color: '#1e293b',
-        customClass: { popup: 'rounded-2xl shadow-xl border border-slate-100' }
+        color: '#1e293b'
     });
 
+    // Fetch Unique Conversations
     const fetchChats = async () => {
         try {
             const res = await axios.get(`https://dharnow.onrender.com/api/messages/${userEmail}`);
@@ -36,12 +39,17 @@ const Chat = () => {
                 m.senderEmail === userEmail ? m.receiverEmail : m.senderEmail
             ))];
             setConversations(uniquePeople);
-        } catch (err) { console.error(err); }
+        } catch (err) {
+            console.error(err);
+        }
         setLoading(false);
     };
 
-    useEffect(() => { if (userEmail) fetchChats(); }, [userEmail]);
+    useEffect(() => {
+        if (userEmail) fetchChats();
+    }, [userEmail]);
 
+    // Live Search Logic
     const handleSearch = async (e) => {
         const query = e.target.value;
         setSearchQuery(query);
@@ -49,193 +57,220 @@ const Chat = () => {
             try {
                 const res = await axios.get(`https://dharnow.onrender.com/api/users/search?query=${query}`);
                 setSearchResults(res.data.filter(u => u.email !== userEmail));
-            } catch (err) { console.error("Search failed"); }
-        } else { setSearchResults([]); }
+            } catch (err) {
+                console.error("Search failed");
+            }
+        } else {
+            setSearchResults([]);
+        }
     };
 
+    // Polling and Read Status Logic
     useEffect(() => {
         if (activeChat) {
             const markAsReadAndFetch = async () => {
                 try {
                     const res = await axios.get(`https://dharnow.onrender.com/api/messages/thread/${userEmail}/${activeChat}`);
                     setMessages(res.data);
-                    if (res.data.some(m => !m.isRead && m.receiverEmail === userEmail)) {
+
+                    const unreadForMe = res.data.some(m => !m.isRead && m.receiverEmail === userEmail);
+                    if (unreadForMe) {
                         await axios.patch(`https://dharnow.onrender.com/api/messages/read-thread/${userEmail}/${activeChat}`);
                         window.dispatchEvent(new Event('messagesRead'));
                     }
-                } catch (err) { console.error("Chat sync error", err); }
+                } catch (err) {
+                    console.error("Chat sync error", err);
+                }
             };
+
             markAsReadAndFetch();
             const interval = setInterval(markAsReadAndFetch, 4000);
             return () => clearInterval(interval);
         }
     }, [activeChat, userEmail]);
 
-    useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+    useEffect(() => {
+        scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
 
     const handleSend = async (e) => {
         e.preventDefault();
         if (!newMessage.trim()) return;
-        const msgData = { senderEmail: userEmail, receiverEmail: activeChat, text: newMessage, itemTitle: "Chat Message" };
+
+        const msgData = {
+            senderEmail: userEmail,
+            receiverEmail: activeChat,
+            text: newMessage,
+            itemTitle: "Chat Message"
+        };
+
         try {
             await axios.post('https://dharnow.onrender.com/api/messages/send', msgData);
             setMessages([...messages, { ...msgData, createdAt: new Date() }]);
             setNewMessage("");
             if (!conversations.includes(activeChat)) fetchChats();
-        } catch (err) { Toast.fire({ icon: 'error', title: 'Uplink Failed' }); }
+        } catch (err) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Message Not Sent',
+                text: 'Check your internet connection and try again.',
+                confirmButtonColor: '#4f46e5'
+            });
+        }
     };
 
-    if (loading) return <ChatSkeleton />
+    const startNewChat = (user) => {
+        setActiveChat(user.email);
+        setSearchQuery('');
+        Toast.fire({
+            icon: 'success',
+            title: `Connected with ${user.name.split(' ')[0]}`
+        });
+    };
+
+    if (loading) return <ChatSkeleton></ChatSkeleton>
 
     return (
-        <div className=" bg-[#F8FAFC] p-4 md:p-8 flex items-center justify-center font-sans">
-            {/* MAIN MAC-STYLE CONTAINER */}
-            <div className="w-full max-w-7xl h-[65vh] bg-white/80 backdrop-blur-3xl border border-white rounded-[2.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.05)] flex overflow-hidden relative">
-                
-                {/* SIDEBAR: NEIGHBOR LIST */}
-                <aside className={`w-full md:w-[380px] border-r border-slate-100 flex flex-col bg-white/40 ${activeChat ? 'hidden md:flex' : 'flex'}`}>
-                    <div className="p-8 pb-4">
-                        <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-3xl font-black tracking-tighter text-slate-900">Uplink</h2>
-                            {/* Mac Style Buttons */}
-                            <div className="flex gap-1.5">
-                                <FaCircle className="text-rose-400" size={10} />
-                                <FaCircle className="text-amber-400" size={10} />
-                                <FaCircle className="text-emerald-400" size={10} />
-                            </div>
-                        </div>
+        <div className="max-w-6xl mx-auto h-[65vh] bg-white/70 backdrop-blur-2xl mt-6 rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.1),0_0_80px_rgba(79,70,229,0.15)] border border-white/40 overflow-hidden flex">
 
-                        <div className="relative group">
-                            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
-                            <input
-                                type="text"
-                                placeholder="Search the network..."
-                                value={searchQuery}
-                                onChange={handleSearch}
-                                className="w-full pl-11 pr-4 py-4 bg-slate-100/50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500/20 font-bold text-sm transition-all"
-                            />
-                        </div>
+            {/* SIDEBAR */}
+            <div className={`w-full md:w-96 border-r border-slate-50 flex flex-col ${activeChat ? 'hidden md:flex' : 'flex'}`}>
+                <div className="p-6 space-y-4">
+                    <h2 className="text-2xl font-black flex items-center gap-2">
+                        <FaInbox className="text-indigo-600" /> Neighbors
+                    </h2>
+
+                    <div className="relative">
+                        <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Find a neighbor..."
+                            value={searchQuery}
+                            onChange={handleSearch}
+                            className="w-full pl-12 pr-4 py-3 bg-slate-100 rounded-2xl border-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                        />
                     </div>
+                </div>
 
-                    <div className="overflow-y-auto flex-1 px-4 no-scrollbar">
-                        {searchQuery.length > 2 && (
-                            <div className="mb-6 animate-in slide-in-from-top-2 duration-300">
-                                <p className="px-4 py-2 text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em]">Active </p>
-                                {searchResults.map(user => (
-                                    <button key={user._id} onClick={() => { setActiveChat(user.email); setSearchQuery(''); }} 
-                                        className="w-full p-4 flex items-center gap-4 hover:bg-indigo-50 rounded-3xl transition-all mb-2 border border-transparent hover:border-indigo-100">
-                                        <div className="h-11 w-11 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200"><FaPlus size={14} /></div>
-                                        <div className="text-left overflow-hidden">
-                                            <p className="font-black text-slate-800 text-sm truncate">{user.name}</p>
-                                            <p className="text-[10px] text-indigo-400 font-bold">New Connection</p>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        <p className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Recent Conversations</p>
-                        <div className="space-y-1">
-                            {conversations.map((person) => (
-                                <button
-                                    key={person}
-                                    onClick={() => setActiveChat(person)}
-                                    className={`w-full p-4 flex items-center gap-4 rounded-[1.8rem] transition-all relative ${activeChat === person ? 'bg-white shadow-xl shadow-indigo-100/50 scale-[1.02] border border-slate-100' : 'hover:bg-slate-50'}`}
+                <div className="overflow-y-auto flex-1">
+                    {/* SEARCH RESULTS SECTION */}
+                    {searchQuery.length > 2 && (
+                        <div className="bg-indigo-50/50 pb-4">
+                            <p className="px-6 py-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest">Search Results</p>
+                            {searchResults.map(user => (
+                                <div
+                                    key={user._id}
+                                    onClick={() => startNewChat(user)}
+                                    className="px-6 py-3 flex items-center gap-3 cursor-pointer hover:bg-indigo-100 transition-all"
                                 >
-                                    <div className={`h-12 w-12 rounded-2xl flex items-center justify-center font-black text-white shadow-inner ${activeChat === person ? 'bg-indigo-600' : 'bg-slate-200 text-slate-500'}`}>
-                                        {person.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div className="text-left overflow-hidden flex-1">
-                                        <p className="font-black text-slate-800 text-sm truncate">{person.split('@')[0]}</p>
-                                        <p className={`text-[10px] font-bold ${activeChat === person ? 'text-indigo-500' : 'text-slate-400'}`}>Neighbor </p>
-                                    </div>
-                                    {activeChat === person && <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse" />}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </aside>
-
-                {/* CHAT WINDOW */}
-                <main className={`flex-1 flex flex-col bg-slate-50/30 ${!activeChat ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
-                    {activeChat ? (
-                        <>
-                            {/* CHAT HEADER */}
-                            <header className="p-6 md:p-8 bg-white/60 backdrop-blur-md border-b border-slate-100 flex items-center justify-between shadow-sm relative z-10">
-                                <div className="flex items-center gap-5">
-                                    <button onClick={() => setActiveChat(null)} className="md:hidden text-slate-400"><FaArrowLeft /></button>
-                                    <div className="relative">
-                                        <div className="h-12 w-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-black shadow-lg">
-                                            {activeChat.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-4 border-white rounded-full" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-black text-slate-900 text-lg leading-none mb-1">{activeChat.split('@')[0]}</h3>
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
-                                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Active </p>
-                                        </div>
+                                    <div className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white"><FaPlus size={12} /></div>
+                                    <div className="overflow-hidden">
+                                        <p className="font-black text-slate-800 text-sm truncate">{user.name}</p>
+                                        <p className="text-[9px] text-slate-500 font-bold">{user.email}</p>
                                     </div>
                                 </div>
-                                <button className="p-3 text-slate-300 hover:text-slate-600 transition-colors"><FaEllipsisV /></button>
-                            </header>
+                            ))}
+                        </div>
+                    )}
 
-                            {/* MESSAGE AREA */}
-                            <div className="flex-1 overflow-y-auto p-8 space-y-6 no-scrollbar bg-white/40">
-                                {messages.map((m, index) => (
-                                    <div key={index} className={`flex flex-col ${m.senderEmail === userEmail ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-2 duration-500`}>
-                                        <div className={`max-w-[70%] p-5 rounded-[2rem] text-sm font-bold shadow-sm transition-all ${m.senderEmail === userEmail
-                                            ? 'bg-indigo-600 text-white rounded-br-none shadow-indigo-100'
-                                            : 'bg-white text-slate-700 rounded-bl-none border border-slate-100'
-                                            }`}>
-                                            {m.text}
-                                            {m.itemId && (
-                                                <button onClick={() => navigate(`/item/${m.itemId}`)} 
-                                                    className={`mt-4 w-full p-3 rounded-2xl border flex items-center gap-3 transition-all ${m.senderEmail === userEmail ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200'}`}>
-                                                    <FaBoxOpen className={m.senderEmail === userEmail ? 'text-white' : 'text-indigo-600'} />
-                                                    <span className="truncate text-[11px] uppercase tracking-tighter">{m.itemTitle}</span>
-                                                </button>
-                                            )}
-                                        </div>
-                                        <p className="text-[9px] font-black text-slate-300 mt-2 uppercase px-2">
+                    {/* RECENT CHATS SECTION */}
+                    <p className="px-6 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Recent Chats</p>
+                    {conversations.length === 0 ? (
+                        <p className="px-6 py-4 text-xs font-bold text-slate-400 italic">No recent messages</p>
+                    ) : (
+                        conversations.map((person) => (
+                            <div
+                                key={person}
+                                onClick={() => setActiveChat(person)}
+                                className={`px-6 py-4 flex items-center gap-3 cursor-pointer transition-all ${activeChat === person ? 'bg-indigo-600 text-white' : 'hover:bg-slate-50'}`}
+                            >
+                                <FaUserCircle size={36} className={activeChat === person ? 'text-white' : 'text-slate-200'} />
+                                <div className="overflow-hidden">
+                                    <p className={`font-black text-sm truncate ${activeChat === person ? 'text-white' : 'text-slate-800'}`}>
+                                        {person.split('@')[0]}
+                                    </p>
+                                    <p className={`text-[9px] font-bold uppercase ${activeChat === person ? 'text-indigo-200' : 'text-slate-400'}`}>Neighbor</p>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+
+            {/* CHAT WINDOW */}
+            <div className={`flex-1 flex flex-col bg-slate-50 ${!activeChat ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
+                {activeChat ? (
+                    <>
+                        <div className="p-6 bg-white border-b border-slate-100 flex items-center gap-4 shadow-sm">
+                            <button onClick={() => setActiveChat(null)} className="md:hidden text-slate-400 hover:text-indigo-600"><FaArrowLeft size={20} /></button>
+                            <div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white font-black">{activeChat.charAt(0).toUpperCase()}</div>
+                            <div>
+                                <h3 className="font-black text-slate-800 leading-none">{activeChat.split('@')[0]}</h3>
+                                <p className="text-[10px] text-emerald-500 font-black mt-1 uppercase tracking-widest">Active Chat</p>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {messages.map((m, index) => (
+                                <div key={index} className={`flex ${m.senderEmail === userEmail ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[75%] p-4 rounded-[1.8rem] font-bold text-sm shadow-sm ${m.senderEmail === userEmail
+                                        ? 'bg-indigo-600 text-white rounded-br-none'
+                                        : 'bg-white text-slate-700 rounded-bl-none border border-slate-100'
+                                        }`}>
+
+                                        {m.text}
+
+                                        {/* ATTACHED ITEM CARD - HANDSHAKE SYSTEM */}
+                                        {m.itemId && (
+                                            <div className={`mt-3 p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer ${m.senderEmail === userEmail
+                                                ? 'bg-white/10 border-white/20 hover:bg-white/20'
+                                                : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}
+                                                onClick={() => navigate(`/item/${m.itemId}`)}
+                                            >
+                                                <div className={`p-2 rounded-xl ${m.senderEmail === userEmail ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-600'}`}>
+                                                    <FaBoxOpen size={16} />
+                                                </div>
+                                                <div className="flex-1 min-w-0 text-left">
+                                                    <p className={`text-[9px] font-black uppercase tracking-widest ${m.senderEmail === userEmail ? 'text-indigo-100' : 'text-slate-400'}`}>Attached Item</p>
+                                                    <p className={`text-xs font-black truncate ${m.senderEmail === userEmail ? 'text-white' : 'text-slate-800'}`}>{m.itemTitle}</p>
+                                                </div>
+                                                <div className={`text-[9px] font-black uppercase px-2 py-1 rounded-md ${m.senderEmail === userEmail ? 'bg-white text-indigo-600' : 'bg-indigo-600 text-white'}`}>
+                                                    View
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <p className={`text-[8px] mt-1 opacity-60 ${m.senderEmail === userEmail ? 'text-right' : 'text-left'}`}>
                                             {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                     </div>
-                                ))}
-                                <div ref={scrollRef} />
-                            </div>
-
-                            {/* INPUT BAR */}
-                            <footer className="p-8 bg-transparent relative z-10">
-                                <form onSubmit={handleSend} className="max-w-4xl mx-auto flex gap-4">
-                                    <div className="flex-1 relative">
-                                        <input
-                                            type="text"
-                                            value={newMessage}
-                                            onChange={(e) => setNewMessage(e.target.value)}
-                                            placeholder={`Message ${activeChat.split('@')[0]}...`}
-                                            className="w-full bg-white border border-slate-100 rounded-3xl py-5 px-8 font-bold text-slate-700 shadow-xl shadow-slate-200/50 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
-                                        />
-                                    </div>
-                                    <button type="submit" className="bg-slate-900 text-white p-5 rounded-3xl hover:bg-indigo-600 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center active:scale-95">
-                                        <FaPaperPlane size={18} />
-                                    </button>
-                                </form>
-                            </footer>
-                        </>
-                    ) : (
-                        <div className="text-center p-12 max-w-sm">
-                            <div className="h-32 w-32 bg-indigo-50 rounded-[3rem] flex items-center justify-center mx-auto mb-10 shadow-inner">
-                                <FaInbox size={48} className="text-indigo-200" />
-                            </div>
-                            <h3 className="font-black text-slate-900 text-2xl tracking-tighter mb-4">Select a Connection</h3>
-                            <p className="text-slate-400 font-bold text-sm leading-relaxed uppercase tracking-widest text-[10px]">
-                                Your encrypted neighborhood network is ready. Pick a neighbor to begin the uplink.
-                            </p>
+                                </div>
+                            ))}
+                            <div ref={scrollRef} />
                         </div>
-                    )}
-                </main>
+
+                        <form onSubmit={handleSend} className="p-6 bg-white border-t border-slate-100 flex gap-3">
+                            <input
+                                type="text"
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)}
+                                placeholder={`Message ${activeChat.split('@')[0]}...`}
+                                className="flex-1 bg-slate-50 border-none rounded-2xl px-6 font-bold focus:ring-2 focus:ring-indigo-600 transition-all text-sm"
+                            />
+                            <button type="submit" className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-indigo-600 transition-all shadow-xl shadow-slate-100">
+                                <FaPaperPlane />
+                            </button>
+                        </form>
+                    </>
+                ) : (
+                    <div className="text-center">
+                        <div className="h-24 w-24 bg-indigo-50 text-indigo-200 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
+                            <FaInbox size={40} />
+                        </div>
+                        <h3 className="font-black text-slate-800 text-xl">Your DharNow Conversations</h3>
+                        <p className="text-slate-400 font-bold text-sm mt-2">Search for a neighbor or select a chat to begin</p>
+                    </div>
+                )}
             </div>
         </div>
     );

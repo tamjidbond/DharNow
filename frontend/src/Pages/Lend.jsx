@@ -3,7 +3,7 @@ import axios from 'axios';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import { FaPlus, FaCamera, FaMapMarkerAlt, FaCheckCircle, FaPhoneAlt, FaEnvelope, FaTag, FaClock } from 'react-icons/fa';
 import L from 'leaflet';
-import { useNavigate, useLocation } from 'react-router';
+import { useNavigate, useLocation } from 'react-router'; 
 import Swal from 'sweetalert2';
 
 // 1. Fix Leaflet Icons (Crucial for the map to show markers correctly)
@@ -87,17 +87,17 @@ const Lend = () => {
         const res = await axios.get('https://dharnow.onrender.com/api/categories');
         if (res.data && res.data.length > 0) {
           setCategories(res.data);
-          if (!formData.category) setFormData(prev => ({ ...prev, category: res.data[0].name }));
+          if(!formData.category) setFormData(prev => ({ ...prev, category: res.data[0].name }));
         } else {
           const defaults = [{ name: 'Tools' }, { name: 'Books' }, { name: 'Electronics' }, { name: 'Other' }];
           setCategories(defaults);
-          if (!formData.category) setFormData(prev => ({ ...prev, category: 'Tools' }));
+          if(!formData.category) setFormData(prev => ({ ...prev, category: 'Tools' }));
         }
       } catch (err) {
         console.error("Categories fetch failed, using fallbacks.");
         const fallbacks = [{ name: 'Tools' }, { name: 'Books' }, { name: 'Electronics' }, { name: 'Other' }];
         setCategories(fallbacks);
-        if (!formData.category) setFormData(prev => ({ ...prev, category: 'Tools' }));
+        if(!formData.category) setFormData(prev => ({ ...prev, category: 'Tools' }));
       }
     };
     fetchCategories();
@@ -149,8 +149,6 @@ const Lend = () => {
   // --- FORM SUBMISSION ---
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Validation
     if (!itemImage || !coordinates || !formData.phone || !formData.address) {
       return Swal.fire({
         icon: 'info',
@@ -162,29 +160,29 @@ const Lend = () => {
 
     setLoading(true);
     try {
-      // 1. Process & Compress Image
+      // Compress image before sending to free MongoDB
       const compressedBase64 = await processImage(itemImage);
 
-      // 2. Add Item to Database
+      // 1. Add Item to Database
       const itemResponse = await axios.post('https://dharnow.onrender.com/api/items/add', {
         ...formData,
         image: compressedBase64,
         coordinates: coordinates,
         lentBy: userEmail,
-        wishId: wishId
+        wishId: wishId // Link to wish if applicable
       });
 
-      // 3. Extract the new Item ID
-      // Check both common response patterns
-      const newItemId = itemResponse.data.item?._id || itemResponse.data._id || itemResponse.data.itemId || itemResponse.data.insertedId;
-      // 4. Automated Handshake Message
-      if (targetUser && newItemId) {
+      // 2. Automated Handshake Message to Neighbor
+      if (targetUser) {
+        // Extract ID from response (handle both MongoDB direct and custom responses)
+        const newItemId = itemResponse.data.itemId || itemResponse.data._id;
+        
         await axios.post('https://dharnow.onrender.com/api/messages/send', {
           senderEmail: userEmail,
           receiverEmail: targetUser,
-          itemId: newItemId, // CRUCIAL: This triggers the product card in Chat
+          itemId: newItemId,
           itemTitle: formData.title,
-          text: `Hey neighbor! I saw your wish for "${predefinedName}" and just listed it for you. Click the card below to check it out!`
+          text: `Hi! I saw your wish for "${predefinedName}" and I've just listed it for you. You can view the details and request it here!`
         });
       }
 
@@ -192,11 +190,10 @@ const Lend = () => {
       setTimeout(() => navigate('/'), 2500);
 
     } catch (err) {
-      console.error("Submission error:", err);
       Swal.fire({
         icon: 'error',
         title: 'Posting Failed',
-        text: err.response?.data?.message || "Could not connect to the network.",
+        text: err.response?.data?.message || err.message,
         confirmButtonColor: '#ef4444'
       });
     }
@@ -205,19 +202,13 @@ const Lend = () => {
 
   if (success) {
     return (
-      <div className="max-w-md mx-auto mt-20 p-12 bg-white rounded-[3.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.05)] text-center border border-slate-50 animate-in zoom-in duration-500">
-        <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-          <FaCheckCircle size={40} />
-        </div>
-        <h2 className="text-3xl font-black text-slate-900 mb-3 tracking-tighter">Uplink Successful!</h2>
-        <p className="text-slate-400 font-bold text-[11px] uppercase tracking-[0.2em] leading-relaxed">
-          Your item is live and a direct link has been sent to your neighbor.
-        </p>
-        <div className="mt-8 pt-8 border-t border-slate-50">
-          <button onClick={() => navigate('/')} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-slate-100 hover:bg-indigo-600 transition-all">
-            Return to Dashboard
-          </button>
-        </div>
+      <div className="max-w-md mx-auto mt-20 p-10 bg-white rounded-[3rem] shadow-2xl text-center border border-emerald-100">
+        <FaCheckCircle className="text-6xl text-emerald-500 mb-6 mx-auto" />
+        <h2 className="text-2xl font-black text-slate-800 mb-2 tracking-tighter">Item Listed!</h2>
+        <p className="text-slate-500 mb-8 font-bold text-sm uppercase tracking-widest">Your neighbor has been notified.</p>
+        <button onClick={() => navigate('/')} className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-indigo-200 transition hover:bg-indigo-700">
+          Back Home
+        </button>
       </div>
     );
   }
@@ -227,7 +218,7 @@ const Lend = () => {
       <div className="mb-10 border-b border-slate-50 pb-8 flex justify-between items-end">
         <div>
           <h2 className="text-4xl font-black text-slate-900 tracking-tighter flex items-center gap-4">
-            <div className="p-3 bg-indigo-600 rounded-2xl text-white"><FaPlus size={20} /></div>
+            <div className="p-3 bg-indigo-600 rounded-2xl text-white"><FaPlus size={20} /></div> 
             {predefinedName ? "Fulfill a Wish" : "Lend an Item"}
           </h2>
           <p className="text-slate-500 mt-2 font-bold uppercase tracking-widest text-xs">
