@@ -111,7 +111,7 @@ const CreativeLanding = () => {
     .to(camera.position, { z: 2, ease: "none" })
     .to(scene.fog, { far: 1, ease: "none" }, 0);
 
-    return () => window.removeEventListener('mousemove', onMouseMove);
+    return () => window.removeEventListener('mousemove', onMouseMove );
   }, []);
 
   return (
