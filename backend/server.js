@@ -68,7 +68,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
       { upsert: true }
     );
     await transporter.sendMail({
-      from: `"DharNow" <${process.env.EMAIL_USER}>`,
+      from: `<${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Your Verification Code",
       html: `<div style="font-family:sans-serif; padding:20px;">
