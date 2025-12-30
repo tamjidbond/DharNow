@@ -2,13 +2,43 @@ import React from 'react';
 import { Link } from 'react-router';
 import { FaLocationArrow, FaDirections, FaMapMarkerAlt, FaBoxOpen } from 'react-icons/fa';
 
-const ItemGrid = ({ filteredItems, userCoords, calculateDistance, resetFilters }) => {
+// 1. Create the Skeleton Card inside the same file for easy access
+const SkeletonCard = () => (
+    <div className="bg-white rounded-[1rem] overflow-hidden border border-slate-100 shadow-sm animate-pulse">
+        <div className="h-52 bg-slate-100 w-full"></div>
+        <div className="p-6 space-y-4">
+            <div className="h-3 bg-slate-200 rounded-full w-20"></div>
+            <div className="h-5 bg-slate-300 rounded-full w-3/4"></div>
+            <div className="h-3 bg-slate-200 rounded-full w-1/2"></div>
+            <div className="h-10 bg-slate-200 rounded-2xl w-full mt-4"></div>
+        </div>
+    </div>
+);
+
+const ItemGrid = ({ filteredItems, userCoords, calculateDistance, resetFilters, loading }) => {
+    
+    // 2. If loading is true, show 8 skeleton cards
+    if (loading) {
+        return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                    <SkeletonCard key={n} />
+                ))}
+            </div>
+        );
+    }
+
+    // 3. If not loading and no items found
     if (filteredItems.length === 0) {
         return (
             <div className="col-span-full py-24 text-center bg-white rounded-[3rem] border border-dashed border-slate-200">
-                <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"><FaBoxOpen className="text-4xl text-slate-300" /></div>
+                <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FaBoxOpen className="text-4xl text-slate-300" />
+                </div>
                 <h3 className="text-xl font-bold text-slate-800">No items found</h3>
-                <button onClick={resetFilters} className="mt-4 bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase">Clear All Filters</button>
+                <button onClick={resetFilters} className="mt-4 bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase">
+                    Clear All Filters
+                </button>
             </div>
         );
     }
@@ -32,13 +62,19 @@ const ItemGrid = ({ filteredItems, userCoords, calculateDistance, resetFilters }
                                     </span>
                                 )}
                             </div>
-                            <a href={`https://www.google.com/maps/dir/?api=1&destination=${itemLat},${itemLng}`} target="_blank" rel="noreferrer" className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-indigo-600 shadow-md hover:bg-indigo-600 hover:text-white transition-colors"><FaDirections size={14} /></a>
+                            {/* Fixed the Maps Link here too */}
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${itemLat},${itemLng}`} target="_blank" rel="noreferrer" className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-indigo-600 shadow-md hover:bg-indigo-600 hover:text-white transition-colors">
+                                <FaDirections size={14} />
+                            </a>
                             <div className="absolute bottom-4 right-4 bg-indigo-600 text-white px-3 py-1 rounded-xl text-xs font-black shadow-lg">৳{item.price} / {item.priceType}</div>
                         </div>
                         <div className="p-6">
                             <div className="text-[10px] font-black text-indigo-500 uppercase mb-2">{item.category}</div>
                             <h3 className="font-bold text-lg text-slate-800 mb-2 truncate group-hover:text-indigo-600 transition-colors">{item.title}</h3>
-                            <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase mb-6"><FaMapMarkerAlt className="text-indigo-400" /><span className="truncate">{item.address || "Dhaka"}</span></div>
+                            <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase mb-6">
+                                <FaMapMarkerAlt className="text-indigo-400" />
+                                <span className="truncate">{item.address || "Dhaka"}</span>
+                            </div>
                             <Link to={`/item/${item._id}`} className={`w-full block text-center py-3 rounded-2xl font-black text-xs uppercase transition-all ${item.status === 'available' ? 'bg-green-300 text-slate-800 hover:bg-indigo-600 hover:text-white' : 'bg-red-400 hover:bg-red-600 text-white'}`}>
                                 {item.status === 'available' ? 'View Details' : 'Currently Booked'}
                             </Link>

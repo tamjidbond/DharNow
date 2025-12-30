@@ -34,7 +34,7 @@ const Register = () => {
 
     return (
         <div className="max-w-md mx-auto mt-20 p-8 bg-white rounded-3xl shadow-2xl border border-slate-100 text-center">
-            <h2 className="text-3xl font-black mb-2">DharLink</h2>
+            <h2 className="text-3xl font-black mb-2">DharNow</h2>
             <p className="text-slate-500 mb-8">Borrow and Lend with your Neighbors</p>
 
             <button
