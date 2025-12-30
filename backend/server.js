@@ -30,10 +30,19 @@ let db;
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: 'bondtamjid02@gmail.com'
-    pass: 'emnr yooz ldlj orov'
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
+
+transporter.verify((err, success) => {
+  if (err) {
+    console.error("❌ MAIL TRANSPORT ERROR:", err);
+  } else {
+    console.log("✅ Mail transporter is ready");
+  }
+});
+
 
 // !-================================================================--- DATABASE CONNECTION --==========================================================================
 async function startServer() {
@@ -60,27 +69,38 @@ app.get('/', (req, res) => {
 
 app.post('/api/auth/send-otp', async (req, res) => {
   const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email required" });
+
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
   try {
     await db.collection("otps").updateOne(
       { email },
       { $set: { otp, createdAt: new Date() } },
       { upsert: true }
     );
+
     await transporter.sendMail({
-      from: `<${process.env.EMAIL_USER}>`,
+      from: `"DharNow" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: "Your Verification Code",
-      html: `<div style="font-family:sans-serif; padding:20px;">
-              <h2>DharNow Verification</h2>
-              <p>Your 6-digit code is: <b style="font-size:24px; color:#4f46e5;">${otp}</b></p>
-             </div>`
+      subject: "Your DharNow Verification Code",
+      html: `
+        <h2>DharNow OTP</h2>
+        <h1>${otp}</h1>
+        <p>This code expires in 5 minutes.</p>
+      `
     });
-    res.json({ message: "OTP Sent" });
+
+    res.json({ success: true });
   } catch (err) {
+    console.error("❌ OTP ERROR FULL:", err);
+    console.log("EMAIL_USER:", process.env.EMAIL_USER);
+    console.log("EMAIL_PASS EXISTS:", !!process.env.EMAIL_PASS);
     res.status(500).json({ error: err.message });
   }
+
 });
+
 
 app.post('/api/auth/verify-otp', async (req, res) => {
   const { email, otp } = req.body;
