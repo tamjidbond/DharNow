@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2'; // Import SweetAlert2
-import { FaShieldAlt, FaChartPie, FaCubes, FaBiohazard, FaSync, FaTags } from 'react-icons/fa';
+import { FaShieldAlt, FaChartPie, FaCubes, FaBiohazard, FaSync, FaTags, FaUserShield, FaSignOutAlt } from 'react-icons/fa';
 
 // Import our new components
 import { NavBtn } from '../Components/admin-components/NavBtn';
@@ -10,8 +10,10 @@ import AnalyticsTab from '../Components/admin-components/AnalyticsTab';
 import InventoryTab from '../Components/admin-components/InventoryTab';
 import CategoriesTab from '../Components/admin-components/CategoriesTab';
 import SecurityTab from '../Components/admin-components/SecurityTab';
+import UsersTab from '../Components/admin-components/UsersTab';
 
 const Admin = () => {
+  const [users, setUsers] = useState([]); // Add this line
   const [activeTab, setActiveTab] = useState('analytics');
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -40,6 +42,25 @@ const Admin = () => {
     }
   }, []);
 
+  const handleLogout = () => {
+    Swal.fire({
+      title: 'Terminate Session?',
+      text: "You will need to re-authenticate to access the Core Interface.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#1e293b',
+      confirmButtonText: 'Logout',
+      background: '#0f172a',
+      color: '#fff'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.removeItem('userEmail'); // Clear the session
+        window.location.href = "/"; // Redirect to home/login
+      }
+    });
+  };
+
   const fetchAllAdminData = async () => {
     setLoading(true);
     try {
@@ -50,6 +71,7 @@ const Admin = () => {
         axios.get('https://dharnow.onrender.com/api/admin/dashboard-intelligence'),
         axios.get('https://dharnow.onrender.com/api/categories')
       ]);
+      setUsers(u.data)
       setItems(i.data);
       setStats(s.data);
       setIntelligence(intel.data);
@@ -171,43 +193,93 @@ const Admin = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-200 p-4 md:p-10 font-sans">
-      <div className="max-w-[1600px] mx-auto">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-          <div className="space-y-1">
-            <h1 className="text-5xl font-black tracking-tighter text-white flex items-center gap-4">
-              <span className="bg-indigo-600 p-3 rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.5)]"><FaShieldAlt /></span>
-              DHAR-NOW <span className="text-indigo-500 text-2xl font-light italic">CORE</span>
-            </h1>
+    <div className="min-h-screen bg-[#0f172a] text-slate-200 font-sans selection:bg-indigo-500/30">
+      {/* 1. Global Wrapper with Responsive Padding */}
+      <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-10">
+
+        {/* 2. HEADER: Optimized for all screens */}
+        <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 md:mb-12 gap-6">
+          <div className="flex items-center gap-4">
+            {/* ... existing Logo code ... */}
+            <div className="bg-indigo-600 p-3 rounded-2xl shadow-[0_0_40px_rgba(99,102,241,0.3)]">
+              <FaShieldAlt className="text-2xl md:text-3xl text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tighter text-white">
+                DHAR-NOW <span className="text-indigo-500 font-light italic text-xl md:text-2xl ml-1">CORE</span>
+              </h1>
+            </div>
           </div>
-          <div className="flex bg-slate-800/50 p-1.5 rounded-2xl backdrop-blur-xl border border-white/5">
-            <NavBtn active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} icon={<FaChartPie />} label="Analytics" />
-            <NavBtn active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} icon={<FaCubes />} label="Inventory" />
-            <NavBtn active={activeTab === 'categories'} onClick={() => setActiveTab('categories')} icon={<FaTags />} label="Categories" />
-            <NavBtn active={activeTab === 'security'} onClick={() => setActiveTab('security')} icon={<FaBiohazard />} label="Security" />
-            <button onClick={fetchAllAdminData} className="px-4 text-slate-400 hover:text-white transition"><FaSync className={loading ? 'animate-spin' : ''} /></button>
+
+          {/* NAV BAR with Logout Integrated */}
+          <div className="w-full xl:w-auto overflow-x-auto no-scrollbar">
+            <nav className="flex items-center bg-slate-800/40 p-1.5 rounded-[2rem] backdrop-blur-2xl border border-white/5 min-w-max shadow-2xl">
+              <NavBtn active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} icon={<FaChartPie />} label="Analytics" />
+              <NavBtn active={activeTab === 'users'} onClick={() => setActiveTab('users')} icon={<FaUserShield />} label="Users" />
+              <NavBtn active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} icon={<FaCubes />} label="Items" />
+              <NavBtn active={activeTab === 'categories'} onClick={() => setActiveTab('categories')} icon={<FaTags />} label="Tags" />
+              <NavBtn active={activeTab === 'security'} onClick={() => setActiveTab('security')} icon={<FaBiohazard />} label="Security" />
+
+              {/* Divider */}
+              <div className="h-6 w-[1px] bg-white/10 mx-2"></div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-1 pr-2">
+                <button
+                  onClick={fetchAllAdminData}
+                  title="Refresh Data"
+                  className={`p-3 text-slate-400 hover:text-indigo-400 transition-all rounded-full hover:bg-white/5 ${loading ? 'animate-spin' : ''}`}
+                >
+                  <FaSync size={16} />
+                </button>
+
+                <button
+                  onClick={handleLogout}
+                  title="Logout"
+                  className="p-3 text-rose-500 hover:text-white transition-all rounded-full hover:bg-rose-500/20"
+                >
+                  <FaSignOutAlt size={18} />
+                </button>
+              </div>
+            </nav>
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        {/* 4. KPI GRID: Smart Scaling */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
           <KPICard label="Network Trust" value="98.4%" trend="+2.1%" color="indigo" />
-          <KPICard label="Real Items" value={stats.items} trend="+12%" color="emerald" />
-          <KPICard label="Verified Users" value={stats.users} trend="+5.4%" color="amber" />
-          <KPICard label="Total Requests" value={stats.requests} trend="+18%" color="rose" />
+          <KPICard label="Total Items" value={stats.items} trend="+12%" color="emerald" />
+          <KPICard label="Verified Neighbors" value={stats.users} trend="+5.4%" color="amber" />
+          <KPICard label="System Requests" value={stats.requests} trend="+18%" color="rose" />
         </div>
 
-        {activeTab === 'analytics' && <AnalyticsTab intelligence={intelligence} COLORS={COLORS} />}
-        {activeTab === 'inventory' && <InventoryTab items={items} handleDeleteItem={handleDeleteItem} />}
-        {activeTab === 'categories' && (
-          <CategoriesTab
-            categories={categories}
-            newCategoryName={newCategoryName}
-            setNewCategoryName={setNewCategoryName}
-            handleAddCategory={handleAddCategory}
-            handleDeleteCategory={handleDeleteCategory}
-          />
-        )}
-        {activeTab === 'security' && <SecurityTab intelligence={intelligence} />}
+        {/* 5. CONTENT AREA: Clean separation */}
+        <main className="relative z-10 w-full overflow-hidden rounded-[2.5rem]">
+          <div className="transition-all duration-500 ease-in-out">
+            {activeTab === 'analytics' && <AnalyticsTab intelligence={intelligence} COLORS={COLORS} />}
+            {activeTab === 'inventory' && <InventoryTab items={items} handleDeleteItem={handleDeleteItem} />}
+            {activeTab === 'categories' && (
+              <CategoriesTab
+                categories={categories}
+                newCategoryName={newCategoryName}
+                setNewCategoryName={setNewCategoryName}
+                handleAddCategory={handleAddCategory}
+                handleDeleteCategory={handleDeleteCategory}
+              />
+            )}
+            {activeTab === 'security' && <SecurityTab intelligence={intelligence} />}
+            {activeTab === 'users' && <UsersTab users={users} />}
+          </div>
+        </main>
+
+        {/* 6. FOOTER: Status Indicator for mobile */}
+        <footer className="mt-12 py-6 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+            System Online: Dharnow-v2.0
+          </div>
+          <p>© 2025 DharLink Secure Admin</p>
+        </footer>
       </div>
     </div>
   );
