@@ -5,9 +5,12 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const { Resend } = require('resend');
+const admin = require('firebase-admin');
+const serviceAccount = require(process.env.FIREBASE_SERVICE_ACCOUNT); // Make sure path is correct
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
 const app = express();
 
