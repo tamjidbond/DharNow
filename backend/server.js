@@ -72,33 +72,38 @@ app.post('/api/auth/send-otp', async (req, res) => {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   try {
+    // Save OTP to DB
     await db.collection("otps").updateOne(
       { email },
       { $set: { otp, createdAt: new Date() } },
       { upsert: true }
     );
 
-    await resend.emails.send({
-      from: "DharNow <dharnow.contact@gmail.com>",
+    console.log(`📧 Sending OTP ${otp} to ${email}`);
+
+    // Send email via Resend
+    const result = await resend.emails.send({
+      from: "DharNow <b-21154@mangrove.edu.bd>", // ✅ Correct format
       to: email,
       subject: "Your DharNow Verification Code",
       html: `
-    <div style="font-family:Arial,sans-serif">
-      <h2>DharNow OTP is: </h2>
-      <h1 style="letter-spacing:4px">${otp}</h1>
-      <p>This code expires in 5 minutes.</p>
-    </div>
-  `
+        <div style="font-family:Arial,sans-serif">
+          <h2>DharNow OTP is:</h2>
+          <h1 style="letter-spacing:4px">${otp}</h1>
+          <p>This code expires in 5 minutes.</p>
+        </div>
+      `
     });
 
+    console.log("📧 Resend response:", result);
 
     res.json({ success: true });
   } catch (err) {
     console.error("❌ OTP ERROR FULL:", err);
     res.status(500).json({ error: err.message });
   }
-
 });
+
 
 
 app.post('/api/auth/verify-otp', async (req, res) => {
