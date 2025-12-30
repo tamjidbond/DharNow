@@ -6,7 +6,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const admin = require('firebase-admin');
-const serviceAccount = require('./firebase-service-account.json'); // Make sure path is correct
+const serviceAccount = require(process.env.ADMIN_FILE); // Make sure path is correct
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
