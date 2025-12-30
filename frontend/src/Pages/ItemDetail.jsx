@@ -8,6 +8,41 @@ import Swal from 'sweetalert2';
 import ItemMap from '../Components/item-detail/ItemMap';
 import OwnerCard from '../Components/item-detail/OwnerCard';
 
+const ItemSkeleton = () => (
+    <div className="max-w-7xl mx-auto px-6 py-12 animate-pulse">
+        <div className="flex flex-col lg:flex-row gap-12">
+            
+            {/* Left Side: Image & Description Skeleton */}
+            <div className="lg:w-2/3 space-y-6">
+                <div className="w-full h-[400px] bg-slate-200 rounded-[3rem]"></div>
+                <div className="h-8 bg-slate-200 rounded-full w-3/4"></div>
+                <div className="space-y-3">
+                    <div className="h-4 bg-slate-100 rounded-full w-full"></div>
+                    <div className="h-4 bg-slate-100 rounded-full w-5/6"></div>
+                    <div className="h-4 bg-slate-100 rounded-full w-2/3"></div>
+                </div>
+            </div>
+
+            {/* Right Side: Owner Card Skeleton */}
+            <div className="lg:w-1/3">
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+                    <div className="h-4 bg-slate-100 rounded-full w-24 mb-8"></div>
+                    <div className="flex items-center gap-4">
+                        <div className="h-16 w-16 bg-slate-200 rounded-2xl"></div>
+                        <div className="flex-1 space-y-2">
+                            <div className="h-5 bg-slate-200 rounded-full w-32"></div>
+                            <div className="h-3 bg-slate-100 rounded-full w-20"></div>
+                        </div>
+                    </div>
+                    <div className="h-14 bg-slate-200 rounded-3xl w-full mt-10"></div>
+                    <div className="h-12 bg-slate-100 rounded-3xl w-full"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+);
+
 const ItemDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -122,7 +157,7 @@ const ItemDetail = () => {
         setRequestLoading(false);
     };
 
-    if (loading) return <div className="py-20 text-center font-bold text-indigo-600">Syncing DharNow...</div>;
+    if (loading) return <ItemSkeleton></ItemSkeleton>
     if (!data?.item) return <div className="py-20 text-center">Item not found.</div>;
 
     const { item, owner } = data;
