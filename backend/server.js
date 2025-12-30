@@ -153,6 +153,7 @@ app.post('/api/users/register', async (req, res) => {
       email,
       name,
       address,
+      profileImage: profileImage || "",
       isAdmin: isAdmin || false, // Default to false for everyone
       createdAt: new Date()
     };
@@ -243,7 +244,7 @@ app.get('/api/items/:id', async (req, res) => {
     if (!item) return res.status(404).json({ message: "Item not found" });
     const owner = await db.collection("users").findOne(
       { email: item.lentBy },
-      { projection: { name: 1, phone: 1, address: 1, createdAt: 1 } }
+      { projection: { name: 1, phone: 1, address: 1, createdAt: 1, profileImage: 1 } }
     );
     res.json({ item, owner });
   } catch (err) {

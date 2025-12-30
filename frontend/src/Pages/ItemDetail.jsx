@@ -47,6 +47,7 @@ const ItemDetail = () => {
         const fetchItem = async () => {
             try {
                 const res = await axios.get(`https://dharnow.onrender.com/api/items/${id}`);
+                console.log(res.data)
                 setData(res.data);
             } catch (err) { console.error(err); }
             setLoading(false);
