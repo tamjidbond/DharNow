@@ -2,17 +2,26 @@ const express = require('express');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const nodemailer = require('nodemailer');
 
 dotenv.config();
+
+const { Resend } = require('resend');
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 const app = express();
 
 // --- CONFIGURATION & MIDDLEWARE ---
 app.use(cors({
-  origin: '*', // For testing, allow everything. For security later, use your Vercel URL.
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: [
+    "https://dharnow.vercel.app",
+    "http://localhost:5173"
+  ],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  credentials: true
 }));
+
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -27,21 +36,8 @@ const client = new MongoClient(uri, {
 
 let db;
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
 
-transporter.verify((err, success) => {
-  if (err) {
-    console.error("❌ MAIL TRANSPORT ERROR:", err);
-  } else {
-    console.log("✅ Mail transporter is ready");
-  }
-});
+
 
 
 // !-================================================================--- DATABASE CONNECTION --==========================================================================
@@ -57,6 +53,9 @@ async function startServer() {
     console.error("❌ Failed to connect to MongoDB", err);
   }
 }
+
+app.options("*", cors());
+
 
 // --- BASE ROUTE ---
 app.get('/', (req, res) => {
@@ -80,22 +79,23 @@ app.post('/api/auth/send-otp', async (req, res) => {
       { upsert: true }
     );
 
-    await transporter.sendMail({
-      from: `"DharNow" <${process.env.EMAIL_USER}>`,
+    await resend.emails.send({
+      from: "DharNow <onboarding@resend.dev>",
       to: email,
       subject: "Your DharNow Verification Code",
       html: `
-        <h2>DharNow OTP</h2>
-        <h1>${otp}</h1>
-        <p>This code expires in 5 minutes.</p>
-      `
+    <div style="font-family:Arial,sans-serif">
+      <h2>DharNow OTP</h2>
+      <h1 style="letter-spacing:4px">${otp}</h1>
+      <p>This code expires in 5 minutes.</p>
+    </div>
+  `
     });
+
 
     res.json({ success: true });
   } catch (err) {
     console.error("❌ OTP ERROR FULL:", err);
-    console.log("EMAIL_USER:", process.env.EMAIL_USER);
-    console.log("EMAIL_PASS EXISTS:", !!process.env.EMAIL_PASS);
     res.status(500).json({ error: err.message });
   }
 
