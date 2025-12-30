@@ -79,7 +79,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
     );
 
     await resend.emails.send({
-      from: "DharNow <onboarding@resend.dev>",
+      from: "DharNow <dharnow.contact@gmail.com>",
       to: email,
       subject: "Your DharNow Verification Code",
       html: `
