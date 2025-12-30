@@ -12,7 +12,7 @@ const Register = () => {
     const handleSendCode = async () => {
         setLoading(true);
         try {
-            await axios.post('http://localhost:8000/api/auth/send-otp', { email });
+            await axios.post('https://dharnow.onrender.com/api/auth/send-otp', { email });
             setStep(2);
         } catch (err) {
             Swal.fire({
@@ -30,14 +30,14 @@ const Register = () => {
     const handleVerifyOtp = async () => {
         setLoading(true);
         try {
-            const res = await axios.post('http://localhost:8000/api/auth/verify-otp', { email, otp });
+            const res = await axios.post('https://dharnow.onrender.com/api/auth/verify-otp', { email, otp });
 
             if (res.data.success) {
                 localStorage.setItem('userEmail', email);
 
                 // If this is a new user, register them automatically in the background
                 if (res.data.newUser) {
-                    await axios.post('http://localhost:8000/api/users/register', {
+                    await axios.post('https://dharnow.onrender.com/api/users/register', {
                         email: email,
                         name: "DharNow User", // Default placeholder
                         address: "Address not set",// Default placeholder

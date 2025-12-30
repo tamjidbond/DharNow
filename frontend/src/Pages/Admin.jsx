@@ -44,11 +44,11 @@ const Admin = () => {
     setLoading(true);
     try {
       const [u, i, s, intel, cat] = await Promise.all([
-        axios.get('http://localhost:8000/api/admin/all-users'),
-        axios.get('http://localhost:8000/api/admin/all-items'),
-        axios.get('http://localhost:8000/api/admin/system-stats'),
-        axios.get('http://localhost:8000/api/admin/dashboard-intelligence'),
-        axios.get('http://localhost:8000/api/categories')
+        axios.get('https://dharnow.onrender.com/api/admin/all-users'),
+        axios.get('https://dharnow.onrender.com/api/admin/all-items'),
+        axios.get('https://dharnow.onrender.com/api/admin/system-stats'),
+        axios.get('https://dharnow.onrender.com/api/admin/dashboard-intelligence'),
+        axios.get('https://dharnow.onrender.com/api/categories')
       ]);
       setItems(i.data);
       setStats(s.data);
@@ -66,7 +66,7 @@ const Admin = () => {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
     try {
-      await axios.post('http://localhost:8000/api/categories/add', { name: newCategoryName });
+      await axios.post('https://dharnow.onrender.com/api/categories/add', { name: newCategoryName });
       setNewCategoryName("");
       fetchAllAdminData();
       Toast.fire({ icon: 'success', title: 'Category added successfully' });
@@ -82,7 +82,7 @@ const Admin = () => {
 
     try {
       // STEP 1: Check if items are currently using this category
-      const checkRes = await axios.get(`http://localhost:8000/api/items/count-by-category/${categoryName}`);
+      const checkRes = await axios.get(`https://dharnow.onrender.com/api/items/count-by-category/${categoryName}`);
       const itemCount = checkRes.data.count;
 
       if (itemCount > 0) {
@@ -104,19 +104,19 @@ const Admin = () => {
         // STEP 3: Second Step - Typed Confirmation
         const { value: confirmText } = await Swal.fire({
           title: 'Final Protocol',
-          text: `Type "DELETE" to permanently remove "${categoryName}"`,
+          text: `Type "${categoryName}" to permanently remove "${categoryName}" Category.`,
           input: 'text',
-          inputPlaceholder: 'DELETE',
+          inputPlaceholder: categoryName,
           showCancelButton: true,
           confirmButtonColor: '#ef4444',
           background: '#1e293b',
           color: '#fff',
           inputValidator: (value) => {
-            if (value !== 'DELETE') return 'You must type DELETE exactly!';
+            if (value !== categoryName) return `you must enter "${categoryName}"  exactly!`;
           }
         });
 
-        if (confirmText !== 'DELETE') return;
+        if (confirmText !== categoryName) return;
       } else {
         // Standard Confirmation for empty categories
         const simpleConfirm = await Swal.fire({
@@ -132,7 +132,7 @@ const Admin = () => {
       }
 
       // STEP 4: Execution
-      await axios.delete(`http://localhost:8000/api/categories/${id}`);
+      await axios.delete(`https://dharnow.onrender.com/api/categories/${id}`);
       fetchAllAdminData();
       Toast.fire({ icon: 'success', title: 'Category permanently purged' });
 
@@ -155,7 +155,7 @@ const Admin = () => {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:8000/api/items/delete/${id}`);
+        await axios.delete(`https://dharnow.onrender.com/api/items/delete/${id}`);
         fetchAllAdminData();
         Toast.fire({ icon: 'success', title: 'Item deleted' });
       } catch (err) {

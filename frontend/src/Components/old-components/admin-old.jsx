@@ -26,11 +26,11 @@ const Admin = () => {
         try {
             // Fetching everything including new categories endpoint
             const [u, i, s, intel, cat] = await Promise.all([
-                axios.get('http://localhost:8000/api/admin/all-users'),
-                axios.get('http://localhost:8000/api/admin/all-items'),
-                axios.get('http://localhost:8000/api/admin/system-stats'),
-                axios.get('http://localhost:8000/api/admin/dashboard-intelligence'),
-                axios.get('http://localhost:8000/api/categories') // NEW FETCH
+                axios.get('https://dharnow.onrender.com/api/admin/all-users'),
+                axios.get('https://dharnow.onrender.com/api/admin/all-items'),
+                axios.get('https://dharnow.onrender.com/api/admin/system-stats'),
+                axios.get('https://dharnow.onrender.com/api/admin/dashboard-intelligence'),
+                axios.get('https://dharnow.onrender.com/api/categories') // NEW FETCH
             ]);
 
             setUsers(u.data);
@@ -53,7 +53,7 @@ const Admin = () => {
         e.preventDefault();
         if (!newCategoryName.trim()) return;
         try {
-            await axios.post('http://localhost:8000/api/categories/add', { name: newCategoryName });
+            await axios.post('https://dharnow.onrender.com/api/categories/add', { name: newCategoryName });
             setNewCategoryName("");
             fetchAllAdminData();
         } catch (err) { alert("Failed to add category"); }
@@ -62,7 +62,7 @@ const Admin = () => {
     const handleDeleteCategory = async (id) => {
         if (!window.confirm("Remove this category?")) return;
         try {
-            await axios.delete(`http://localhost:8000/api/categories/${id}`);
+            await axios.delete(`https://dharnow.onrender.com/api/categories/${id}`);
             fetchAllAdminData();
         } catch (err) { alert("Delete failed"); }
     };
@@ -71,7 +71,7 @@ const Admin = () => {
     const handleDeleteItem = async (id) => {
         if (!window.confirm("Permanently delete this item?")) return;
         try {
-            await axios.delete(`http://localhost:8000/api/items/delete/${id}`);
+            await axios.delete(`https://dharnow.onrender.com/api/items/delete/${id}`);
             fetchAllAdminData();
         } catch (err) { alert("Delete failed"); }
     };

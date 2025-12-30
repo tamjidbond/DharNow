@@ -62,7 +62,7 @@ const ItemDetail = () => {
 
         const fetchItem = async () => {
             try {
-                const res = await axios.get(`http://localhost:8000/api/items/${id}`);
+                const res = await axios.get(`https://dharnow.onrender.com/api/items/${id}`);
                 setData(res.data);
             } catch (err) {
                 console.error("Error fetching item:", err);
@@ -74,7 +74,7 @@ const ItemDetail = () => {
             const email = localStorage.getItem('userEmail');
             if (email) {
                 try {
-                    const res = await axios.get(`http://localhost:8000/api/users/profile-by-email/${email}`);
+                    const res = await axios.get(`https://dharnow.onrender.com/api/users/profile-by-email/${email}`);
                     if (res.data) {
                         setBorrowerPhone(res.data.phone || "");
                         setBorrowerName(res.data.name || "A neighbor");
@@ -182,7 +182,7 @@ const ItemDetail = () => {
         // --- 5. SEND DATA ---
         setRequestLoading(true);
         try {
-            await axios.post('http://localhost:8000/api/requests/create', {
+            await axios.post('https://dharnow.onrender.com/api/requests/create', {
                 itemId: data.item._id,
                 itemTitle: data.item.title,
                 lenderEmail: data.item.lentBy,

@@ -23,7 +23,7 @@ const MapView = () => {
     useEffect(() => {
         const fetchItems = async () => {
             try {
-                const res = await axios.get('http://localhost:8000/api/items/all');
+                const res = await axios.get('https://dharnow.onrender.com/api/items/all');
                 // Filter only available items to show on map
                 setItems(res.data.filter(item => item.status === 'available'));
             } catch (err) {

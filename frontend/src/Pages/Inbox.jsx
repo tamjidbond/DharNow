@@ -33,7 +33,7 @@ const Chat = () => {
     // Fetch Unique Conversations
     const fetchChats = async () => {
         try {
-            const res = await axios.get(`http://localhost:8000/api/messages/${userEmail}`);
+            const res = await axios.get(`https://dharnow.onrender.com/api/messages/${userEmail}`);
             const uniquePeople = [...new Set(res.data.map(m =>
                 m.senderEmail === userEmail ? m.receiverEmail : m.senderEmail
             ))];
@@ -54,7 +54,7 @@ const Chat = () => {
         setSearchQuery(query);
         if (query.length > 2) {
             try {
-                const res = await axios.get(`http://localhost:8000/api/users/search?query=${query}`);
+                const res = await axios.get(`https://dharnow.onrender.com/api/users/search?query=${query}`);
                 setSearchResults(res.data.filter(u => u.email !== userEmail));
             } catch (err) {
                 console.error("Search failed");
@@ -69,12 +69,12 @@ const Chat = () => {
         if (activeChat) {
             const markAsReadAndFetch = async () => {
                 try {
-                    const res = await axios.get(`http://localhost:8000/api/messages/thread/${userEmail}/${activeChat}`);
+                    const res = await axios.get(`https://dharnow.onrender.com/api/messages/thread/${userEmail}/${activeChat}`);
                     setMessages(res.data);
 
                     const unreadForMe = res.data.some(m => !m.isRead && m.receiverEmail === userEmail);
                     if (unreadForMe) {
-                        await axios.patch(`http://localhost:8000/api/messages/read-thread/${userEmail}/${activeChat}`);
+                        await axios.patch(`https://dharnow.onrender.com/api/messages/read-thread/${userEmail}/${activeChat}`);
                         window.dispatchEvent(new Event('messagesRead'));
                     }
                 } catch (err) {
@@ -104,7 +104,7 @@ const Chat = () => {
         };
 
         try {
-            await axios.post('http://localhost:8000/api/messages/send', msgData);
+            await axios.post('https://dharnow.onrender.com/api/messages/send', msgData);
             setMessages([...messages, { ...msgData, createdAt: new Date() }]);
             setNewMessage("");
             if (!conversations.includes(activeChat)) fetchChats();

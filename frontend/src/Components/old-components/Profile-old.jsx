@@ -46,10 +46,10 @@ const Profile = () => {
     setLoading(true);
     try {
       const [itemsRes, incomingRes, outgoingRes, userRes] = await Promise.all([
-        axios.get(`http://localhost:8000/api/items/user/${email}`),
-        axios.get(`http://localhost:8000/api/requests/owner/${email}`),
-        axios.get(`http://localhost:8000/api/requests/borrower/${email}`),
-        axios.get(`http://localhost:8000/api/users/profile-by-email/${email}`)
+        axios.get(`https://dharnow.onrender.com/api/items/user/${email}`),
+        axios.get(`https://dharnow.onrender.com/api/requests/owner/${email}`),
+        axios.get(`https://dharnow.onrender.com/api/requests/borrower/${email}`),
+        axios.get(`https://dharnow.onrender.com/api/users/profile-by-email/${email}`)
       ]);
 
       setMyItems(itemsRes.data);
@@ -85,7 +85,7 @@ const Profile = () => {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:8000/api/items/delete/${itemId}`);
+        await axios.delete(`https://dharnow.onrender.com/api/items/delete/${itemId}`);
         Swal.fire('Deleted!', 'Item has been removed.', 'success');
         fetchProfileData(userEmail);
       } catch (err) {
@@ -97,7 +97,7 @@ const Profile = () => {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
-      await axios.patch(`http://localhost:8000/api/users/update/${userEmail}`, userData);
+      await axios.patch(`https://dharnow.onrender.com/api/users/update/${userEmail}`, userData);
       Swal.fire({ title: 'Success!', text: 'Profile updated successfully!', icon: 'success', timer: 2000, showConfirmButton: false });
       setIsEditModalOpen(false);
       fetchProfileData(userEmail);
@@ -108,7 +108,7 @@ const Profile = () => {
 
   const handleApprove = async (requestId) => {
     try {
-      await axios.patch(`http://localhost:8000/api/requests/approve/${requestId}`);
+      await axios.patch(`https://dharnow.onrender.com/api/requests/approve/${requestId}`);
       Swal.fire('Approved!', 'The request is now active.', 'success');
       fetchProfileData(userEmail);
     } catch (err) { Swal.fire('Error', 'Approval failed', 'error'); }
@@ -126,7 +126,7 @@ const Profile = () => {
 
     if (result.isConfirmed) {
       try {
-        await axios.patch(`http://localhost:8000/api/requests/reject/${requestId}`);
+        await axios.patch(`https://dharnow.onrender.com/api/requests/reject/${requestId}`);
         Swal.fire('Rejected', 'Request has been declined.', 'info');
         fetchProfileData(userEmail);
       } catch (err) { Swal.fire('Error', 'Rejection failed', 'error'); }
@@ -135,7 +135,7 @@ const Profile = () => {
 
   const handleComplete = async (requestId, borrowerEmail, rating) => {
     try {
-      await axios.patch(`http://localhost:8000/api/requests/complete/${requestId}`, {
+      await axios.patch(`https://dharnow.onrender.com/api/requests/complete/${requestId}`, {
         rating,
         borrowerEmail
       });

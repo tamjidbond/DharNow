@@ -15,7 +15,7 @@ const Navbar = () => {
     const email = localStorage.getItem('userEmail');
     if (!email) return;
     try {
-      const res = await axios.get(`http://localhost:8000/api/messages/${email}`);
+      const res = await axios.get(`https://dharnow.onrender.com/api/messages/${email}`);
       const unread = res.data.filter(m => m.receiverEmail === email && m.isRead === false).length;
       setUnreadCount(unread);
     } catch (err) {

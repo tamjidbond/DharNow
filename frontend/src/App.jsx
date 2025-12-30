@@ -31,7 +31,7 @@
 //   // 1. Fetch all items from Backend
 //   const fetchItems = async () => {
 //     try {
-//       const response = await axios.get('http://localhost:8000/api/items/all');
+//       const response = await axios.get('https://dharnow.onrender.com/api/items/all');
 //       setItems(response.data);
 //     } catch (error) {
 //       console.error("Backend connection failed", error);
@@ -89,7 +89,7 @@
 //     try {
 //       const userEmail = localStorage.getItem('userEmail');
 
-//       await axios.post('http://localhost:8000/api/items/add', {
+//       await axios.post('https://dharnow.onrender.com/api/items/add', {
 //         ...formData,
 //         image: image,
 //         lentBy: userEmail, // Correctly linking to the logged-in user

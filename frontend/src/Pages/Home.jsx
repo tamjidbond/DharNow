@@ -44,8 +44,8 @@ const Home = () => {
     const fetchData = async () => {
       try {
         const [itemsRes, categoriesRes] = await Promise.all([
-          axios.get('http://localhost:8000/api/items/all'),
-          axios.get('http://localhost:8000/api/categories') // Your new endpoint
+          axios.get('https://dharnow.onrender.com/api/items/all'),
+          axios.get('https://dharnow.onrender.com/api/categories') // Your new endpoint
         ]);
 
         setItems(itemsRes.data);

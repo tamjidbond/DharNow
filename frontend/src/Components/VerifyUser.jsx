@@ -52,7 +52,7 @@ const VerifyUser = () => {
       const user = auth.currentUser;
       const base64Nid = await convertToBase64(idFile);
 
-      await axios.post('http://localhost:8000/api/users/register', {
+      await axios.post('https://dharnow.onrender.com/api/users/register', {
         email: user.email,
         phone: user.phoneNumber,
         name: profile.name,

@@ -45,7 +45,7 @@ const Home = () => {
   useEffect(() => {
     const fetchItems = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/api/items/all');
+        const res = await axios.get('https://dharnow.onrender.com/api/items/all');
         setItems(res.data);
       } catch (err) {
         console.error("Error fetching items", err);

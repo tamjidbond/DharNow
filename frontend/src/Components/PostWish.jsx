@@ -11,7 +11,7 @@ const PostWish = ({ onWishPosted }) => {
     e.preventDefault();
     try {
       // We save this to a NEW collection in MongoDB called 'wishes'
-      await axios.post('http://localhost:8000/api/wishes/create', {
+      await axios.post('https://dharnow.onrender.com/api/wishes/create', {
         ...wish,
         requesterEmail: userEmail,
         status: 'open'

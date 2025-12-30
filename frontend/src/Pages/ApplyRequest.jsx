@@ -10,7 +10,7 @@ const PostWish = ({ onWishPosted }) => {
     const userEmail = localStorage.getItem('userEmail');
     const [categories, setCategories] = useState([])
     useEffect(() => {
-        fetch('http://localhost:8000/api/categories')
+        fetch('https://dharnow.onrender.com/api/categories')
             .then(res => res.json())
             .then(data => {
                 setCategories(data);
@@ -22,7 +22,7 @@ const PostWish = ({ onWishPosted }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:8000/api/wishes/create', {
+            await axios.post('https://dharnow.onrender.com/api/wishes/create', {
                 ...wish,
                 requesterEmail: userEmail,
                 status: 'open'
@@ -92,7 +92,7 @@ const RequestBoard = () => {
 
     const fetchWishes = async () => {
         try {
-            const res = await axios.get('http://localhost:8000/api/wishes');
+            const res = await axios.get('https://dharnow.onrender.com/api/wishes');
             setWishes(res.data);
         } catch (err) {
             console.error("Failed to fetch wishes", err);
@@ -105,7 +105,7 @@ const RequestBoard = () => {
 
         try {
             // 1. Fetch all my items
-            const res = await axios.get(`http://localhost:8000/api/items/user/${currentLenderEmail}`);
+            const res = await axios.get(`https://dharnow.onrender.com/api/items/user/${currentLenderEmail}`);
             const myItems = res.data;
 
             // 2. Create an Options Object for the dropdown
@@ -151,7 +151,7 @@ const RequestBoard = () => {
                     // OPTION: Selected an existing item
                     const selectedItemTitle = itemOptions[selection];
 
-                    await axios.post('http://localhost:8000/api/messages/send', {
+                    await axios.post('https://dharnow.onrender.com/api/messages/send', {
                         senderEmail: currentLenderEmail,
                         receiverEmail: wish.requesterEmail,
                         itemId: selection, // The ID of the item you picked
@@ -185,7 +185,7 @@ const RequestBoard = () => {
 
         if (result.isConfirmed) {
             try {
-                await axios.delete(`http://localhost:8000/api/wishes/delete/${id}`);
+                await axios.delete(`https://dharnow.onrender.com/api/wishes/delete/${id}`);
                 Swal.fire('Deleted!', 'Your wish has been removed.', 'success');
                 fetchWishes();
             } catch (err) {

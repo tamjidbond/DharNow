@@ -84,7 +84,7 @@ const Lend = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/api/categories');
+        const res = await axios.get('https://dharnow.onrender.com/api/categories');
         if (res.data && res.data.length > 0) {
           setCategories(res.data);
           if(!formData.category) setFormData(prev => ({ ...prev, category: res.data[0].name }));
@@ -109,7 +109,7 @@ const Lend = () => {
       if (!userEmail) return;
       setFetchingUser(true);
       try {
-        const res = await axios.get(`http://localhost:8000/api/users/profile-by-email/${userEmail}`);
+        const res = await axios.get(`https://dharnow.onrender.com/api/users/profile-by-email/${userEmail}`);
         if (res.data) {
           setFormData(prev => ({
             ...prev,
@@ -164,7 +164,7 @@ const Lend = () => {
       const compressedBase64 = await processImage(itemImage);
 
       // 1. Add Item to Database
-      const itemResponse = await axios.post('http://localhost:8000/api/items/add', {
+      const itemResponse = await axios.post('https://dharnow.onrender.com/api/items/add', {
         ...formData,
         image: compressedBase64,
         coordinates: coordinates,
@@ -177,7 +177,7 @@ const Lend = () => {
         // Extract ID from response (handle both MongoDB direct and custom responses)
         const newItemId = itemResponse.data.itemId || itemResponse.data._id;
         
-        await axios.post('http://localhost:8000/api/messages/send', {
+        await axios.post('https://dharnow.onrender.com/api/messages/send', {
           senderEmail: userEmail,
           receiverEmail: targetUser,
           itemId: newItemId,
