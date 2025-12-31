@@ -29,8 +29,8 @@ const ItemGrid = ({ filteredItems, userCoords, calculateDistance, resetFilters, 
         <div className="space-y-6">
             {/* Header with Refresh Button */}
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center">
-                  <span className='text-blue-500 '>{filteredItems.length} </span>  Items  Available 
+                <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest">
+                    Available Near You ({filteredItems.length})
                 </h2>
                 <button
                     onClick={handleManualRefresh}
@@ -62,27 +62,49 @@ const ItemGrid = ({ filteredItems, userCoords, calculateDistance, resetFilters, 
                 /* 3. The Actual Grid */
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {filteredItems.map((item) => {
-                        const itemLat = item.coordinates?.[1] || item.location?.coordinates[1];
-                        const itemLng = item.coordinates?.[0] || item.location?.coordinates[0];
-                        const distance = userCoords && (itemLat && itemLng) ? calculateDistance(userCoords[0], userCoords[1], itemLat, itemLng) : null;
+                        // FIX: Ensure we check location.coordinates correctly
+                        const coords = item.location?.coordinates || item.coordinates;
+                        const itemLat = coords ? coords[1] : null;
+                        const itemLng = coords ? coords[0] : null;
+                        
+                        // FIX: Better distance check
+                        const distance = (userCoords && itemLat && itemLng) 
+                            ? calculateDistance(userCoords[0], userCoords[1], itemLat, itemLng) 
+                            : null;
 
                         return (
                             <div key={item._id} className="bg-white rounded-[1rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl transition-all group">
                                 <div className="relative h-52 overflow-hidden">
                                     <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                    
                                     <div className="absolute top-4 left-4 flex flex-col gap-2">
                                         <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase shadow-lg ${item.status === 'available' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>{item.status}</span>
+                                        
+                                        {/* Distance Tag */}
                                         {distance !== null && (
                                             <span className="bg-white/90 backdrop-blur-sm text-slate-800 px-3 py-1 rounded-full text-[9px] font-black uppercase flex items-center gap-1 shadow-sm">
                                                 <FaLocationArrow className="text-indigo-500 text-[8px]" /> {distance} KM Away
                                             </span>
                                         )}
                                     </div>
-                                    <a href={`https://www.google.com/maps/search/?api=1&query=${itemLat},${itemLng}`} target="_blank" rel="noreferrer" className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-indigo-600 shadow-md hover:bg-indigo-600 hover:text-white transition-colors">
-                                        <FaDirections size={14} />
-                                    </a>
-                                    <div className="absolute bottom-4 right-4 bg-indigo-600 text-white px-3 py-1 rounded-xl text-xs font-black shadow-lg">৳{item.price} / {item.priceType}</div>
+
+                                    {/* Maps Link Fix: removed the '0' before {itemLat} */}
+                                    {itemLat && itemLng && (
+                                        <a 
+                                            href={`https://www.google.com/maps?q=${itemLat},${itemLng}`} 
+                                            target="_blank" 
+                                            rel="noreferrer" 
+                                            className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-indigo-600 shadow-md hover:bg-indigo-600 hover:text-white transition-colors"
+                                        >
+                                            <FaDirections size={14} />
+                                        </a>
+                                    )}
+
+                                    <div className="absolute bottom-4 right-4 bg-indigo-600 text-white px-3 py-1 rounded-xl text-xs font-black shadow-lg">
+                                        ৳{item.price} / {item.priceType}
+                                    </div>
                                 </div>
+
                                 <div className="p-6">
                                     <div className="text-[10px] font-black text-indigo-500 uppercase mb-2">{item.category}</div>
                                     <h3 className="font-bold text-lg text-slate-800 mb-2 truncate group-hover:text-indigo-600 transition-colors">{item.title}</h3>
