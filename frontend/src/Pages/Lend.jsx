@@ -9,7 +9,10 @@ import Swal from 'sweetalert2';
 // 1. Fix Leaflet Icons (Crucial for the map to show markers correctly)
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import { useData } from '../contexts/DataContext';
 
+
+ 
 let DefaultIcon = L.icon({
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
@@ -146,6 +149,8 @@ const Lend = () => {
     });
   };
 
+  const {refreshData} = useData();
+
   // --- FORM SUBMISSION ---
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -187,6 +192,7 @@ const Lend = () => {
       }
 
       setSuccess(true);
+      refreshData()
       setTimeout(() => navigate('/'), 2500);
 
     } catch (err) {
